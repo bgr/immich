@@ -1,4 +1,3 @@
-import { OutputInfo } from 'sharp';
 import { SystemConfig } from 'src/config';
 import { Exif } from 'src/database';
 import { AssetEditAction } from 'src/dtos/editing.dto';
@@ -338,14 +337,14 @@ describe(MediaService.name, () => {
     let rawInfo: RawImageInfo;
 
     beforeEach(() => {
-      rawInfo = { width: 100, height: 100, channels: 3 };
+      rawInfo = { width: 100, height: 100, channels: 3, hasAlpha: false };
       mocks.person.getFaces.mockResolvedValue([]);
       mocks.ocr.getByAssetId.mockResolvedValue([]);
       mocks.media.decodeImage.mockImplementation((input) =>
         Promise.resolve(
           typeof input === 'string'
-            ? { data: rawBuffer, info: rawInfo as OutputInfo } // string implies original file
-            : { data: fullsizeBuffer, info: rawInfo as OutputInfo }, // buffer implies embedded image extracted
+            ? { data: rawBuffer, info: rawInfo } // string implies original file
+            : { data: fullsizeBuffer, info: rawInfo }, // buffer implies embedded image extracted
         ),
       );
     });
@@ -1276,14 +1275,14 @@ describe(MediaService.name, () => {
     let rawInfo: RawImageInfo;
 
     beforeEach(() => {
-      rawInfo = { width: 100, height: 100, channels: 3 };
+      rawInfo = { width: 100, height: 100, channels: 3, hasAlpha: false };
       mocks.person.getFaces.mockResolvedValue([]);
       mocks.ocr.getByAssetId.mockResolvedValue([]);
       mocks.media.decodeImage.mockImplementation((input) =>
         Promise.resolve(
           typeof input === 'string'
-            ? { data: rawBuffer, info: rawInfo as OutputInfo } // string implies original file
-            : { data: fullsizeBuffer, info: rawInfo as OutputInfo }, // buffer implies embedded image extracted
+            ? { data: rawBuffer, info: rawInfo } // string implies original file
+            : { data: fullsizeBuffer, info: rawInfo }, // buffer implies embedded image extracted
         ),
       );
     });
@@ -1452,7 +1451,7 @@ describe(MediaService.name, () => {
       mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue(personThumbnailStub.newThumbnailMiddle);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 1000, height: 1000 } as OutputInfo;
+      const info = { width: 1000, height: 1000 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1497,7 +1496,7 @@ describe(MediaService.name, () => {
       mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue(personThumbnailStub.videoThumbnail);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 1000, height: 1000 } as OutputInfo;
+      const info = { width: 1000, height: 1000 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1542,7 +1541,7 @@ describe(MediaService.name, () => {
       mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue(personThumbnailStub.newThumbnailStart);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 2160, height: 3840 } as OutputInfo;
+      const info = { width: 2160, height: 3840 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1585,7 +1584,7 @@ describe(MediaService.name, () => {
       mocks.person.update.mockResolvedValue(personStub.primaryPerson);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 1000, height: 1000 } as OutputInfo;
+      const info = { width: 1000, height: 1000 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1628,7 +1627,7 @@ describe(MediaService.name, () => {
       mocks.person.update.mockResolvedValue(personStub.primaryPerson);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 4624, height: 3080 } as OutputInfo;
+      const info = { width: 4624, height: 3080 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1671,7 +1670,7 @@ describe(MediaService.name, () => {
       mocks.person.update.mockResolvedValue(personStub.primaryPerson);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 4624, height: 3080 } as OutputInfo;
+      const info = { width: 4624, height: 3080 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1716,7 +1715,7 @@ describe(MediaService.name, () => {
       mocks.media.generateThumbnail.mockResolvedValue();
       const extracted = Buffer.from('');
       const data = Buffer.from('');
-      const info = { width: 2160, height: 3840 } as OutputInfo;
+      const info = { width: 2160, height: 3840 } as RawImageInfo;
       mocks.media.extract.mockResolvedValue({ buffer: extracted, format: RawExtractedFormat.Jpeg });
       mocks.media.decodeImage.mockResolvedValue({ data, info });
       mocks.media.getImageDimensions.mockResolvedValue(info);
@@ -1761,7 +1760,7 @@ describe(MediaService.name, () => {
       mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue(personThumbnailStub.newThumbnailMiddle);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 2160, height: 3840 } as OutputInfo;
+      const info = { width: 2160, height: 3840 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1777,7 +1776,7 @@ describe(MediaService.name, () => {
       mocks.person.getDataForThumbnailGenerationJob.mockResolvedValue(personThumbnailStub.rawEmbeddedThumbnail);
       mocks.media.generateThumbnail.mockResolvedValue();
       const data = Buffer.from('');
-      const info = { width: 2160, height: 3840 } as OutputInfo;
+      const info = { width: 2160, height: 3840 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
 
       await expect(sut.handleGeneratePersonThumbnail({ id: personStub.primaryPerson.id })).resolves.toBe(
@@ -1799,7 +1798,7 @@ describe(MediaService.name, () => {
       mocks.media.generateThumbnail.mockResolvedValue();
       const extracted = Buffer.from('');
       const data = Buffer.from('');
-      const info = { width: 1000, height: 1000 } as OutputInfo;
+      const info = { width: 1000, height: 1000 } as RawImageInfo;
       mocks.media.decodeImage.mockResolvedValue({ data, info });
       mocks.media.extract.mockResolvedValue({ buffer: extracted, format: RawExtractedFormat.Jpeg });
       mocks.media.getImageDimensions.mockResolvedValue(info);
@@ -3551,6 +3550,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Preview,
+          format: ImageFormat.Jpeg,
           path: '/new/preview.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3558,6 +3558,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Thumbnail,
+          format: ImageFormat.Jpeg,
           path: '/new/thumbnail.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3611,6 +3612,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Preview,
+          format: ImageFormat.Jpeg,
           path: '/new/preview.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3618,6 +3620,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Thumbnail,
+          format: ImageFormat.Jpeg,
           path: '/new/thumbnail.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3724,6 +3727,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Preview,
+          format: ImageFormat.Jpeg,
           path: '/same/preview.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3731,6 +3735,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Thumbnail,
+          format: ImageFormat.Jpeg,
           path: '/same/thumbnail.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3769,6 +3774,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Preview,
+          format: ImageFormat.Jpeg,
           path: '/new/preview.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3776,6 +3782,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.FullSize,
+          format: ImageFormat.Jpeg,
           path: '/new/fullsize.jpg',
           isEdited: false,
           isProgressive: false,
@@ -3888,6 +3895,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Preview,
+          format: ImageFormat.Jpeg,
           path: '/old/preview.jpg',
           isEdited: false,
           isProgressive: true,
@@ -3895,6 +3903,7 @@ describe(MediaService.name, () => {
         {
           assetId: asset.id,
           type: AssetFileType.Thumbnail,
+          format: ImageFormat.Jpeg,
           path: '/old/thumbnail.jpg',
           isEdited: false,
           isProgressive: false,

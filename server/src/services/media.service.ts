@@ -52,6 +52,7 @@ interface UpsertFileOptions {
   path: string;
   isEdited: boolean;
   isProgressive: boolean;
+  format: ImageFormat;
 }
 
 type ThumbnailAsset = NonNullable<Awaited<ReturnType<AssetJobRepository['getForGenerateThumbnailJob']>>>;
@@ -299,30 +300,42 @@ export class MediaService extends BaseService {
   }
 
   private async generateImageThumbnails(asset: ThumbnailAsset, { image }: SystemConfig, useEdits: boolean = false) {
+    // Handle embedded preview extraction for RAW files
+    const extractedImage = await this.extractOriginalImage(asset, image, useEdits);
+    const { info, data, colorspace, generateFullsize, convertFullsize, extracted } = extractedImage;
+
+    const sourceHasAlpha = info.hasAlpha === true;
+
     const previewFile = this.getImageFile(asset, {
       fileType: AssetFileType.Preview,
       format: image.preview.format,
       isEdited: useEdits,
-      isProgressive: !!image.preview.progressive && image.preview.format !== ImageFormat.Webp,
+      sourceHasAlpha,
+      progressive: image.preview.progressive,
     });
     const thumbnailFile = this.getImageFile(asset, {
       fileType: AssetFileType.Thumbnail,
       format: image.thumbnail.format,
       isEdited: useEdits,
-      isProgressive: !!image.thumbnail.progressive && image.thumbnail.format !== ImageFormat.Webp,
+      sourceHasAlpha,
+      progressive: image.thumbnail.progressive,
     });
     this.storageCore.ensureFolders(previewFile.path);
-
-    // Handle embedded preview extraction for RAW files
-    const extractedImage = await this.extractOriginalImage(asset, image, useEdits);
-    const { info, data, colorspace, generateFullsize, convertFullsize, extracted } = extractedImage;
 
     // generate final images
     const thumbnailOptions = { colorspace, processInvalidImages: false, raw: info, edits: useEdits ? asset.edits : [] };
     const promises = [
       this.mediaRepository.generateThumbhash(data, thumbnailOptions),
-      this.mediaRepository.generateThumbnail(data, { ...image.thumbnail, ...thumbnailOptions }, thumbnailFile.path),
-      this.mediaRepository.generateThumbnail(data, { ...image.preview, ...thumbnailOptions }, previewFile.path),
+      this.mediaRepository.generateThumbnail(
+        data,
+        { ...image.thumbnail, format: thumbnailFile.format, ...thumbnailOptions },
+        thumbnailFile.path,
+      ),
+      this.mediaRepository.generateThumbnail(
+        data,
+        { ...image.preview, format: previewFile.format, ...thumbnailOptions },
+        previewFile.path,
+      ),
     ];
 
     let fullsizeFile: UpsertFileOptions | undefined;
@@ -332,10 +345,11 @@ export class MediaService extends BaseService {
         fileType: AssetFileType.FullSize,
         format: image.fullsize.format,
         isEdited: useEdits,
-        isProgressive: !!image.fullsize.progressive && image.fullsize.format !== ImageFormat.Webp,
+        sourceHasAlpha,
+        progressive: image.fullsize.progressive,
       });
       const fullsizeOptions = {
-        format: image.fullsize.format,
+        format: fullsizeFile.format,
         quality: image.fullsize.quality,
         progressive: image.fullsize.progressive,
         ...thumbnailOptions,
@@ -346,7 +360,7 @@ export class MediaService extends BaseService {
         fileType: AssetFileType.FullSize,
         format: extracted.format,
         isEdited: false,
-        isProgressive: !!image.fullsize.progressive && image.fullsize.format !== ImageFormat.Webp,
+        progressive: image.fullsize.progressive,
       });
       this.storageCore.ensureFolders(fullsizeFile.path);
 
@@ -492,13 +506,11 @@ export class MediaService extends BaseService {
       fileType: AssetFileType.Preview,
       format: image.preview.format,
       isEdited: false,
-      isProgressive: false,
     });
     const thumbnailFile = this.getImageFile(asset, {
       fileType: AssetFileType.Thumbnail,
       format: image.thumbnail.format,
       isEdited: false,
-      isProgressive: false,
     });
     this.storageCore.ensureFolders(previewFile.path);
 
@@ -811,7 +823,15 @@ export class MediaService extends BaseService {
     }
 
     if (toUpsert.length > 0) {
-      await this.assetRepository.upsertFiles(toUpsert);
+      await this.assetRepository.upsertFiles(
+        toUpsert.map(({ assetId, type, path, isEdited, isProgressive }) => ({
+          assetId,
+          type,
+          path,
+          isEdited,
+          isProgressive,
+        })),
+      );
     }
 
     if (toDelete.size > 0) {
@@ -857,14 +877,26 @@ export class MediaService extends BaseService {
     return generated;
   }
 
-  private getImageFile(asset: ThumbnailPathEntity, options: ImagePathOptions & { isProgressive: boolean }) {
-    const path = StorageCore.getImagePath(asset, options);
+  private getImageFile(
+    asset: ThumbnailPathEntity,
+    options: ImagePathOptions & { sourceHasAlpha?: boolean; progressive?: boolean | null },
+  ): UpsertFileOptions {
+    let format = options.format;
+    if (options.sourceHasAlpha && format === ImageFormat.Jpeg) {
+      this.logger.debug(
+        `Overriding output format for ${options.fileType} from ${format} to ${ImageFormat.Webp} in order to preserve alpha channel for asset ${asset.id}`,
+      );
+      format = ImageFormat.Webp;
+    }
+
+    const path = StorageCore.getImagePath(asset, { ...options, format });
     return {
       assetId: asset.id,
       type: options.fileType,
       path,
+      format: format as ImageFormat,
       isEdited: options.isEdited,
-      isProgressive: options.isProgressive,
+      isProgressive: !!options.progressive && format !== ImageFormat.Webp,
     };
   }
 }
