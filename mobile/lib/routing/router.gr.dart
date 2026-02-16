@@ -991,6 +991,7 @@ class DriftEditImageRoute extends PageRouteInfo<DriftEditImageRouteArgs> {
     required BaseAsset asset,
     required List<AssetEdit> edits,
     required ExifInfo exifInfo,
+    required Future<void> Function(List<AssetEdit>) applyEdits,
     List<PageRouteInfo>? children,
   }) : super(
          DriftEditImageRoute.name,
@@ -1000,6 +1001,7 @@ class DriftEditImageRoute extends PageRouteInfo<DriftEditImageRouteArgs> {
            asset: asset,
            edits: edits,
            exifInfo: exifInfo,
+           applyEdits: applyEdits,
          ),
          initialChildren: children,
        );
@@ -1016,6 +1018,7 @@ class DriftEditImageRoute extends PageRouteInfo<DriftEditImageRouteArgs> {
         asset: args.asset,
         edits: args.edits,
         exifInfo: args.exifInfo,
+        applyEdits: args.applyEdits,
       );
     },
   );
@@ -1028,6 +1031,7 @@ class DriftEditImageRouteArgs {
     required this.asset,
     required this.edits,
     required this.exifInfo,
+    required this.applyEdits,
   });
 
   final Key? key;
@@ -1040,9 +1044,11 @@ class DriftEditImageRouteArgs {
 
   final ExifInfo exifInfo;
 
+  final Future<void> Function(List<AssetEdit>) applyEdits;
+
   @override
   String toString() {
-    return 'DriftEditImageRouteArgs{key: $key, image: $image, asset: $asset, edits: $edits, exifInfo: $exifInfo}';
+    return 'DriftEditImageRouteArgs{key: $key, image: $image, asset: $asset, edits: $edits, exifInfo: $exifInfo, applyEdits: $applyEdits}';
   }
 }
 

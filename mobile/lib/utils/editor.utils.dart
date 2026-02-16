@@ -46,30 +46,25 @@ AffineMatrix buildAffineFromEdits(List<AssetEdit> edits) {
   );
 }
 
-(double, bool, bool) normalizeTransformEdits(List<AssetEdit> edits) {
-  double rotation = 0;
-  bool flipX = false;
-  bool flipY = false;
+bool isCloseToZero(double value, [double epsilon = 1e-15]) {
+  return value.abs() < epsilon;
+}
 
+typedef NormalizedTransform = ({double rotation, bool mirrorHorizontal, bool mirrorVertical});
+
+NormalizedTransform normalizeTransformEdits(List<AssetEdit> edits) {
   final matrix = buildAffineFromEdits(edits);
 
-  // round to avoid floating point precision issues
-  int a = matrix.a.round();
-  int b = matrix.b.round();
-  int c = matrix.c.round();
-  int d = matrix.d.round();
+  double a = matrix.a;
+  double b = matrix.b;
+  double c = matrix.c;
+  double d = matrix.d;
 
-  // [ +/-1, 0, 0, +/-1 ] indicates a 0° or 180° rotation with possible mirrors
-  // [ 0, +/-1, +/-1, 0 ] indicates a 90° or 270° rotation with possible mirrors
-  if (a.abs() == 1 && b.abs() == 0 && c.abs() == 0 && d.abs() == 1) {
-    rotation = a > 0 ? 0 : 180;
-    flipX = rotation == 0 ? a < 0 : a > 0;
-    flipY = rotation == 0 ? d < 0 : d > 0;
-  } else if (a.abs() == 0 && b.abs() == 1 && c.abs() == 1 && d.abs() == 0) {
-    rotation = c > 0 ? 90 : 270;
-    flipX = rotation == 90 ? c < 0 : c > 0;
-    flipY = rotation == 90 ? b > 0 : b < 0;
-  }
+  final rotation = ((isCloseToZero(a) ? asin(c) : acos(a)) * 180) / pi;
 
-  return (rotation, flipX, flipY);
+  return (
+    rotation: rotation < 0 ? 360 + rotation : rotation,
+    mirrorHorizontal: false,
+    mirrorVertical: isCloseToZero(a) ? b == c : a == -d,
+  );
 }

@@ -7,17 +7,13 @@ import 'package:crop_image/crop_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:immich_mobile/constants/enums.dart';
 import 'package:immich_mobile/domain/models/asset/base_asset.model.dart';
 import 'package:immich_mobile/domain/models/asset_edit.model.dart';
 import 'package:immich_mobile/domain/models/exif.model.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
-import 'package:immich_mobile/providers/infrastructure/action.provider.dart';
 import 'package:immich_mobile/providers/theme.provider.dart';
-import 'package:immich_mobile/providers/websocket.provider.dart';
 import 'package:immich_mobile/theme/theme_data.dart';
 import 'package:immich_mobile/utils/editor.utils.dart';
-import 'package:immich_mobile/widgets/common/immich_toast.dart';
 import 'package:immich_ui/immich_ui.dart';
 import 'package:openapi/api.dart' show CropParameters, RotateParameters, MirrorParameters, MirrorAxis;
 
@@ -27,6 +23,7 @@ class DriftEditImagePage extends ConsumerStatefulWidget {
   final BaseAsset asset;
   final List<AssetEdit> edits;
   final ExifInfo exifInfo;
+  final Future<void> Function(List<AssetEdit> edits) applyEdits;
 
   const DriftEditImagePage({
     super.key,
@@ -34,6 +31,7 @@ class DriftEditImagePage extends ConsumerStatefulWidget {
     required this.asset,
     required this.edits,
     required this.exifInfo,
+    required this.applyEdits,
   });
 
   @override
@@ -82,14 +80,14 @@ class _DriftEditImagePageState extends ConsumerState<DriftEditImagePage> with Ti
 
     cropController = CropController(defaultCrop: crop);
 
-    final (rotationAngle, flipHorizontal, flipVertical) = normalizeTransformEdits(widget.edits);
+    final transform = normalizeTransformEdits(widget.edits);
 
     // dont animate to initial rotation
     _rotationAnimationDuration = const Duration(milliseconds: 0);
-    _rotationAngle = rotationAngle.toInt();
+    _rotationAngle = transform.rotation.toInt();
 
-    _flipHorizontal = flipHorizontal;
-    _flipVertical = flipVertical;
+    _flipHorizontal = transform.mirrorHorizontal;
+    _flipVertical = transform.mirrorVertical;
   }
 
   Future<void> _saveEditedImage() async {
@@ -132,28 +130,11 @@ class _DriftEditImagePageState extends ConsumerState<DriftEditImagePage> with Ti
       );
     }
 
-    try {
-      final completer = ref.read(websocketProvider.notifier).waitForEvent("AssetEditReadyV1", (dynamic data) {
-        final eventData = data as Map<String, dynamic>;
-        return eventData["asset"]['id'] == widget.asset.remoteId;
-      }, const Duration(seconds: 10));
+    await widget.applyEdits(edits);
 
-      await ref.read(actionProvider.notifier).applyEdits(ActionSource.viewer, edits);
-      await completer;
-
-      ImmichToast.show(context: context, msg: 'asset_edit_success'.tr(), toastType: ToastType.success);
-
-      context.pop();
-    } catch (e) {
-      if (mounted) {
-        ImmichToast.show(context: context, msg: 'asset_edit_failed'.tr(), toastType: ToastType.error);
-      }
-      return;
-    } finally {
-      setState(() {
-        isEditing = false;
-      });
-    }
+    setState(() {
+      isEditing = false;
+    });
   }
 
   @override
@@ -166,13 +147,6 @@ class _DriftEditImagePageState extends ConsumerState<DriftEditImagePage> with Ti
   void dispose() {
     cropController.dispose();
     super.dispose();
-  }
-
-  Widget _buildProgressIndicator() {
-    return const Padding(
-      padding: EdgeInsets.all(8.0),
-      child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5)),
-    );
   }
 
   void _rotateLeft() {
@@ -222,7 +196,10 @@ class _DriftEditImagePageState extends ConsumerState<DriftEditImagePage> with Ti
           leading: const ImmichCloseButton(),
           actions: [
             isEditing
-                ? _buildProgressIndicator()
+                ? const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5)),
+                  )
                 : ImmichIconButton(
                     icon: Icons.done_rounded,
                     color: ImmichColor.primary,

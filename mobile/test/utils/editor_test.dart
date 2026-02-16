@@ -2,19 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:immich_mobile/domain/models/asset_edit.model.dart';
 import 'package:immich_mobile/utils/editor.utils.dart';
 
-List<AssetEdit> normalizedToEdits(double rotation, bool mirrorH, bool mirrorV) {
+List<AssetEdit> normalizedToEdits(NormalizedTransform transform) {
   List<AssetEdit> edits = [];
 
-  if (mirrorH) {
+  if (transform.mirrorHorizontal) {
     edits.add(const AssetEdit(action: AssetEditAction.mirror, parameters: {"axis": "horizontal"}));
   }
 
-  if (mirrorV) {
+  if (transform.mirrorVertical) {
     edits.add(const AssetEdit(action: AssetEditAction.mirror, parameters: {"axis": "vertical"}));
   }
 
-  if (rotation != 0) {
-    edits.add(AssetEdit(action: AssetEditAction.rotate, parameters: {"angle": rotation}));
+  if (transform.rotation != 0) {
+    edits.add(AssetEdit(action: AssetEditAction.rotate, parameters: {"angle": transform.rotation}));
   }
 
   return edits;
@@ -36,7 +36,7 @@ void main() {
       final edits = <AssetEdit>[];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -47,7 +47,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -58,7 +58,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -69,7 +69,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -80,7 +80,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -91,7 +91,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -103,7 +103,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -115,7 +115,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -128,7 +128,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -140,7 +140,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -152,7 +152,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -165,7 +165,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -177,7 +177,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -189,7 +189,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -202,7 +202,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -214,7 +214,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -226,7 +226,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -238,7 +238,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -250,7 +250,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -262,7 +262,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -274,7 +274,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -287,7 +287,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -300,7 +300,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
@@ -313,7 +313,7 @@ void main() {
       ];
 
       final result = normalizeTransformEdits(edits);
-      final normalizedEdits = normalizedToEdits(result.$1, result.$2, result.$3);
+      final normalizedEdits = normalizedToEdits(result);
 
       expect(compareEditAffines(normalizedEdits, edits), true);
     });
