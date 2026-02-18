@@ -5,7 +5,7 @@
   "acknowledge": "Sain aru",
   "action": "Tegevus",
   "action_common_update": "Uuenda",
-  "action_description": "Komplekt tegevusi, mida teostada filtreeritud üksustega",
+  "action_description": "Tegevused, mida teostada filtreeritud üksustega",
   "actions": "Tegevused",
   "active": "Aktiivne",
   "active_count": "Aktiivsed: {count}",
