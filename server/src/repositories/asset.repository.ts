@@ -722,6 +722,20 @@ export class AssetRepository {
               .innerJoin('album_asset', 'asset.id', 'album_asset.assetId')
               .where('album_asset.albumId', '=', asUuid(options.albumId!)),
           )
+          .$if(!options.albumId, (qb) =>
+            qb.where((eb) =>
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom('album_asset')
+                    .innerJoin('album', 'album.id', 'album_asset.albumId')
+                    .whereRef('album_asset.assetId', '=', 'asset.id')
+                    .where('album.isOnTimeline', '=', false)
+                    .where('album.deletedAt', 'is', null),
+                ),
+              ),
+            ),
+          )
           .$if(!!options.personId, (qb) => hasPeople(qb, [options.personId!]))
           .$if(!!options.withStacked, (qb) =>
             qb
@@ -810,6 +824,20 @@ export class AssetRepository {
                   .selectFrom('album_asset')
                   .whereRef('album_asset.assetId', '=', 'asset.id')
                   .where('album_asset.albumId', '=', asUuid(options.albumId!)),
+              ),
+            ),
+          )
+          .$if(!options.albumId, (qb) =>
+            qb.where((eb) =>
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom('album_asset')
+                    .innerJoin('album', 'album.id', 'album_asset.albumId')
+                    .whereRef('album_asset.assetId', '=', 'asset.id')
+                    .where('album.isOnTimeline', '=', false)
+                    .where('album.deletedAt', 'is', null),
+                ),
               ),
             ),
           )

@@ -98,6 +98,9 @@ export class UpdateAlbumDto {
   @ValidateBoolean({ optional: true, description: 'Enable activity feed' })
   isActivityEnabled?: boolean;
 
+  @ValidateBoolean({ optional: true, description: 'Show assets on timeline' })
+  isOnTimeline?: boolean;
+
   @ValidateEnum({ enum: AssetOrder, name: 'AssetOrder', description: 'Asset sort order', optional: true })
   order?: AssetOrder;
 }
@@ -183,6 +186,8 @@ export class AlbumResponseDto {
   endDate?: string;
   @ApiProperty({ description: 'Activity feed enabled' })
   isActivityEnabled!: boolean;
+  @ApiProperty({ description: 'Show assets on timeline' })
+  isOnTimeline!: boolean;
   @ValidateEnum({ enum: AssetOrder, name: 'AssetOrder', description: 'Asset sort order', optional: true })
   order?: AssetOrder;
 
@@ -205,6 +210,7 @@ export type MapAlbumDto = {
   ownerId: string;
   owner: ShallowDehydrateObject<User>;
   isActivityEnabled: boolean;
+  isOnTimeline: boolean;
   order: AssetOrder;
 };
 
@@ -256,6 +262,7 @@ export const mapAlbum = (
     assets: (withAssets ? assets : []).map((asset) => mapAsset(asset, { auth })),
     assetCount: entity.assets?.length || 0,
     isActivityEnabled: entity.isActivityEnabled,
+    isOnTimeline: entity.isOnTimeline,
     order: entity.order,
   };
 };

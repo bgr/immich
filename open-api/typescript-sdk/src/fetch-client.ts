@@ -656,6 +656,8 @@ export type AlbumResponseDto = {
     id: string;
     /** Activity feed enabled */
     isActivityEnabled: boolean;
+    /** Show assets on timeline */
+    isOnTimeline: boolean;
     /** Last modified asset timestamp */
     lastModifiedAssetTimestamp?: string;
     /** Asset sort order */
@@ -715,6 +717,8 @@ export type UpdateAlbumDto = {
     description?: string;
     /** Enable activity feed */
     isActivityEnabled?: boolean;
+    /** Show assets on timeline */
+    isOnTimeline?: boolean;
     /** Asset sort order */
     order?: AssetOrder;
 };

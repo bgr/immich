@@ -15611,6 +15611,10 @@
             "description": "Activity feed enabled",
             "type": "boolean"
           },
+          "isOnTimeline": {
+            "description": "Show assets on timeline",
+            "type": "boolean"
+          },
           "lastModifiedAssetTimestamp": {
             "description": "Last modified asset timestamp",
             "format": "date-time",
@@ -15657,6 +15661,7 @@
           "hasSharedLink",
           "id",
           "isActivityEnabled",
+          "isOnTimeline",
           "owner",
           "ownerId",
           "shared",
@@ -25259,6 +25264,10 @@
           },
           "isActivityEnabled": {
             "description": "Enable activity feed",
+            "type": "boolean"
+          },
+          "isOnTimeline": {
+            "description": "Show assets on timeline",
             "type": "boolean"
           },
           "order": {
