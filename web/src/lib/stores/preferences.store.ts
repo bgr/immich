@@ -39,7 +39,7 @@ const defaultMapSettings = {
   allowDarkMode: true,
   includeArchived: false,
   onlyFavorites: false,
-  withPartners: false,
+  withPartners: true,
   withSharedAlbums: false,
   relativeDate: '',
   dateAfter: '',

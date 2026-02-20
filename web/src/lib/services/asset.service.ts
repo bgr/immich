@@ -4,6 +4,7 @@ import { authManager } from '$lib/managers/auth-manager.svelte';
 import { eventManager } from '$lib/managers/event-manager.svelte';
 import AssetTagModal from '$lib/modals/AssetTagModal.svelte';
 import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
+import { isEditorPartner } from '$lib/stores/partner-access.store';
 import { user as authUser, preferences } from '$lib/stores/user.store';
 import type { AssetControlContext } from '$lib/types';
 import { getSharedLink, sleep } from '$lib/utils';
@@ -92,6 +93,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
   const currentAuthUser = get(authUser);
   const userPreferences = get(preferences);
   const isOwner = !!(currentAuthUser && currentAuthUser.id === asset.ownerId);
+  const canEdit = isOwner || isEditorPartner(asset.ownerId);
 
   const Share: ActionItem = {
     title: $t('share'),
@@ -147,7 +149,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
     title: $t('to_favorite'),
     icon: mdiHeartOutline,
     type: $t('assets'),
-    $if: () => isOwner && !asset.isFavorite,
+    $if: () => canEdit && !asset.isFavorite,
     onAction: () => handleFavorite(asset),
     shortcuts: [{ key: 'f' }],
   };
@@ -156,7 +158,7 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
     title: $t('unfavorite'),
     icon: mdiHeart,
     type: $t('assets'),
-    $if: () => isOwner && asset.isFavorite,
+    $if: () => canEdit && asset.isFavorite,
     onAction: () => handleUnfavorite(asset),
     shortcuts: [{ key: 'f' }],
   };

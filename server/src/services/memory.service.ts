@@ -6,7 +6,7 @@ import { AuthDto } from 'src/dtos/auth.dto';
 import { MemoryCreateDto, MemoryResponseDto, MemorySearchDto, MemoryUpdateDto, mapMemory } from 'src/dtos/memory.dto';
 import { DatabaseLock, JobName, MemoryType, Permission, QueueName, SystemMetadataKey } from 'src/enum';
 import { BaseService } from 'src/services/base.service';
-import { addAssets, removeAssets } from 'src/utils/asset.util';
+import { addAssets, getMyPartnerIds, removeAssets } from 'src/utils/asset.util';
 
 const DAYS = 3;
 
@@ -70,12 +70,22 @@ export class MemoryService extends BaseService {
   }
 
   async search(auth: AuthDto, dto: MemorySearchDto) {
-    const memories = await this.memoryRepository.search(auth.user.id, dto);
+    const ownerIds = await this.getMemoryOwnerIds(auth);
+    const memories = await this.memoryRepository.search(ownerIds, dto);
     return memories.map((memory) => mapMemory(memory, auth));
   }
 
   statistics(auth: AuthDto, dto: MemorySearchDto) {
-    return this.memoryRepository.statistics(auth.user.id, dto);
+    return this.getMemoryOwnerIds(auth).then((ownerIds) => this.memoryRepository.statistics(ownerIds, dto));
+  }
+
+  private async getMemoryOwnerIds(auth: AuthDto): Promise<string[]> {
+    const partnerIds = await getMyPartnerIds({
+      userId: auth.user.id,
+      repository: this.partnerRepository,
+      timelineEnabled: true,
+    });
+    return [auth.user.id, ...partnerIds];
   }
 
   async get(auth: AuthDto, id: string): Promise<MemoryResponseDto> {

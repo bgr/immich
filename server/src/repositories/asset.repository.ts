@@ -810,8 +810,8 @@ export class AssetRepository {
     return query.executeTakeFirstOrThrow();
   }
 
-  @GenerateSql({ params: [DummyValue.UUID, { minAssetsPerField: 5, maxFields: 12 }] })
-  async getAssetIdByCity(ownerId: string, { minAssetsPerField, maxFields }: AssetExploreFieldOptions) {
+  @GenerateSql({ params: [[DummyValue.UUID], { minAssetsPerField: 5, maxFields: 12 }] })
+  async getAssetIdByCity(ownerIds: string[], { minAssetsPerField, maxFields }: AssetExploreFieldOptions) {
     const items = await this.db
       .with('cities', (qb) =>
         qb
@@ -827,7 +827,7 @@ export class AssetRepository {
       .distinctOn('asset_exif.city')
       .select(['assetId as data', 'asset_exif.city as value'])
       .$narrowType<{ value: NotNull }>()
-      .where('ownerId', '=', asUuid(ownerId))
+      .where('ownerId', '=', anyUuid(ownerIds))
       .where('visibility', '=', AssetVisibility.Timeline)
       .where('type', '=', AssetType.Image)
       .where('deletedAt', 'is', null)

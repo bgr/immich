@@ -79,6 +79,8 @@ export class PersonSearchDto {
   closestPersonId?: string;
   @ValidateUUID({ optional: true, description: 'Closest asset ID for similarity search' })
   closestAssetId?: string;
+  @ValidateUUID({ optional: true, description: 'Owner ID to retrieve people for (for partner access)' })
+  ownerId?: string;
 
   @ApiPropertyOptional({ description: 'Page number for pagination', default: 1 })
   @IsInt()
