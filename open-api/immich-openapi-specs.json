@@ -8015,6 +8015,16 @@
             }
           },
           {
+            "name": "ownerId",
+            "required": false,
+            "in": "query",
+            "description": "Owner ID to retrieve people for (for partner access)",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "required": false,
             "in": "query",
@@ -19473,6 +19483,14 @@
         ],
         "type": "object"
       },
+      "PartnerAccess": {
+        "description": "Partner access level",
+        "enum": [
+          "viewer",
+          "editor"
+        ],
+        "type": "string"
+      },
       "PartnerCreateDto": {
         "properties": {
           "sharedWithId": {
@@ -19495,6 +19513,14 @@
       },
       "PartnerResponseDto": {
         "properties": {
+          "accessLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartnerAccess"
+              }
+            ],
+            "description": "Partner access level"
+          },
           "avatarColor": {
             "allOf": [
               {
@@ -19530,6 +19556,7 @@
           }
         },
         "required": [
+          "accessLevel",
           "avatarColor",
           "email",
           "id",
@@ -19541,14 +19568,19 @@
       },
       "PartnerUpdateDto": {
         "properties": {
+          "accessLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PartnerAccess"
+              }
+            ],
+            "description": "Partner access level"
+          },
           "inTimeline": {
             "description": "Show partner assets in timeline",
             "type": "boolean"
           }
         },
-        "required": [
-          "inTimeline"
-        ],
         "type": "object"
       },
       "PeopleResponse": {

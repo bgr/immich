@@ -100,8 +100,16 @@ export class AssetService extends BaseService {
       delete data.owner;
     }
 
-    if (data.ownerId !== auth.user.id || auth.sharedLink) {
+    if (auth.sharedLink) {
       data.people = [];
+    } else if (data.ownerId !== auth.user.id) {
+      const partnerAccess = await this.accessRepository.asset.checkPartnerAccess(
+        auth.user.id,
+        new Set([id]),
+      );
+      if (partnerAccess.size === 0) {
+        data.people = [];
+      }
     }
 
     return data;

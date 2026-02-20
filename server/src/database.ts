@@ -214,6 +214,7 @@ export type Partner = {
   updatedAt: Date;
   updateId: string;
   inTimeline: boolean;
+  accessLevel: string;
 };
 
 export type Place = {

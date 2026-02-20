@@ -23,6 +23,7 @@
   import { getGlobalActions } from '$lib/services/app.service';
   import { getAssetActions } from '$lib/services/asset.service';
   import { isFaceEditMode } from '$lib/stores/face-edit.svelte';
+  import { isEditorPartner } from '$lib/stores/partner-access.store';
   import { user } from '$lib/stores/user.store';
   import { getSharedLink, withoutIcons } from '$lib/utils';
   import type { OnUndoDelete } from '$lib/utils/actions';
@@ -80,6 +81,7 @@
   }: Props = $props();
 
   const isOwner = $derived($user && asset.ownerId === $user?.id);
+  const canEdit = $derived(isOwner || isEditorPartner(asset.ownerId));
   const isLocked = $derived(asset.visibility === AssetVisibility.Locked);
   const smartSearchEnabled = $derived(featureFlagsManager.value.smartSearch);
 
@@ -130,7 +132,7 @@
     <ActionButton action={Actions.Favorite} />
     <ActionButton action={Actions.Unfavorite} />
 
-    {#if isOwner}
+    {#if canEdit}
       <RatingAction {asset} {onAction} />
     {/if}
 
@@ -179,8 +181,10 @@
         {/if}
 
         {#if !isLocked}
-          {#if isOwner}
+          {#if canEdit}
             <ArchiveAction {asset} {onAction} {preAction} />
+          {/if}
+          {#if isOwner}
             {#if !asset.isArchived && !asset.isTrashed}
               <MenuOption
                 icon={mdiImageSearch}

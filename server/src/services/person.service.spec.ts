@@ -82,6 +82,38 @@ describe(PersonService.name, () => {
         withHidden: false,
       });
     });
+
+    it('should get people for a partner when ownerId is specified', async () => {
+      const partner = factory.partner({ inTimeline: true });
+      const auth = factory.auth({ user: { id: partner.sharedWithId } });
+
+      mocks.partner.getAll.mockResolvedValue([partner]);
+      mocks.person.getAllForUser.mockResolvedValue({
+        items: [personStub.withName],
+        hasNextPage: false,
+      });
+      mocks.person.getNumberOfPeople.mockResolvedValue({ total: 1, hidden: 0 });
+
+      const result = await sut.getAll(auth, { withHidden: false, page: 1, size: 10, ownerId: partner.sharedById });
+
+      expect(result.total).toBe(1);
+      expect(mocks.person.getAllForUser).toHaveBeenCalledWith(
+        { skip: 0, take: 10 },
+        partner.sharedById,
+        expect.objectContaining({ withHidden: false }),
+      );
+    });
+
+    it('should reject getAll with ownerId when not a partner', async () => {
+      const auth = factory.auth();
+      const otherUserId = factory.uuid();
+
+      mocks.partner.getAll.mockResolvedValue([]);
+
+      await expect(sut.getAll(auth, { withHidden: false, page: 1, size: 10, ownerId: otherUserId })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
   });
 
   describe('getById', () => {
@@ -109,6 +141,17 @@ describe(PersonService.name, () => {
       await expect(sut.getById(auth, person.id)).resolves.toEqual(expect.objectContaining({ id: person.id }));
       expect(mocks.person.getById).toHaveBeenCalledWith(person.id);
       expect(mocks.access.person.checkOwnerAccess).toHaveBeenCalledWith(auth.user.id, new Set([person.id]));
+    });
+
+    it('should allow partner to get a person by id via partner access', async () => {
+      mocks.person.getById.mockResolvedValue(personStub.withName);
+      mocks.access.person.checkOwnerAccess.mockResolvedValue(new Set());
+      mocks.access.person.checkPartnerAccess.mockResolvedValue(new Set(['person-1']));
+      await expect(sut.getById(authStub.admin, 'person-1')).resolves.toEqual(responseDto);
+      expect(mocks.access.person.checkPartnerAccess).toHaveBeenCalledWith(
+        authStub.admin.user.id,
+        new Set(['person-1']),
+      );
     });
   });
 

@@ -13,6 +13,7 @@ describe(MemoryService.name, () => {
 
   beforeEach(() => {
     ({ sut, mocks } = newTestService(MemoryService));
+    mocks.partner.getAll.mockResolvedValue([]);
   });
 
   it('should be defined', () => {

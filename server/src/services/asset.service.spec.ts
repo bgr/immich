@@ -161,6 +161,45 @@ describe(AssetService.name, () => {
       expect(mocks.access.asset.checkPartnerAccess).toHaveBeenCalledWith(authStub.admin.user.id, new Set([asset.id]));
     });
 
+    it('should include people data for partner-shared assets', async () => {
+      const asset = AssetFactory.from()
+        .face({}, (builder) => builder.person({ name: 'Test Person' }))
+        .build();
+      // Grant access via partner check (not owner)
+      mocks.access.asset.checkPartnerAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(asset);
+
+      const result = await sut.get(authStub.admin, asset.id);
+
+      expect((result as any).people.length).toBeGreaterThan(0);
+      expect((result as any).people[0]).toHaveProperty('name', 'Test Person');
+    });
+
+    it('should strip people data for album-only access (not partner)', async () => {
+      const asset = AssetFactory.from()
+        .face({}, (builder) => builder.person({ name: 'Test Person' }))
+        .build();
+      // Grant access via album only — not partner
+      mocks.access.asset.checkAlbumAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(asset);
+
+      const result = await sut.get(authStub.admin, asset.id);
+
+      expect((result as any).people).toEqual([]);
+    });
+
+    it('should strip people data for shared link access', async () => {
+      const asset = AssetFactory.from()
+        .face({}, (builder) => builder.person({ name: 'Test Person' }))
+        .build();
+      mocks.access.asset.checkSharedLinkAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(asset);
+
+      const result = await sut.get(authStub.adminSharedLink, asset.id);
+
+      expect((result as any).people).toEqual([]);
+    });
+
     it('should allow shared album access', async () => {
       const asset = AssetFactory.create();
       mocks.access.asset.checkAlbumAccess.mockResolvedValue(new Set([asset.id]));
@@ -211,6 +250,21 @@ describe(AssetService.name, () => {
 
       await sut.update(authStub.admin, asset.id, { isFavorite: true });
 
+      expect(mocks.asset.update).toHaveBeenCalledWith({ id: asset.id, isFavorite: true });
+    });
+
+    it('should allow editor partner to update the asset', async () => {
+      const asset = AssetFactory.create();
+      mocks.access.asset.checkPartnerEditorAccess.mockResolvedValue(new Set([asset.id]));
+      mocks.asset.getById.mockResolvedValue(asset);
+      mocks.asset.update.mockResolvedValue(asset);
+
+      await sut.update(authStub.admin, asset.id, { isFavorite: true });
+
+      expect(mocks.access.asset.checkPartnerEditorAccess).toHaveBeenCalledWith(
+        authStub.admin.user.id,
+        new Set([asset.id]),
+      );
       expect(mocks.asset.update).toHaveBeenCalledWith({ id: asset.id, isFavorite: true });
     });
 

@@ -76,7 +76,7 @@
     }
   };
 
-  const handleRemovePartner = async (partner: PartnerResponseDto) => {
+  const handleRemovePartner = async (partner: UserResponseDto) => {
     const isConfirmed = await modalManager.showDialog({
       title: $t('stop_photo_sharing'),
       prompt: $t('stop_photo_sharing_description', { values: { partner: partner.name } }),

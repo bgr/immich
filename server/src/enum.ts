@@ -53,6 +53,11 @@ export enum AlbumUserRole {
   Viewer = 'viewer',
 }
 
+export enum PartnerAccess {
+  Viewer = 'viewer',
+  Editor = 'editor',
+}
+
 export enum AssetOrder {
   Asc = 'asc',
   Desc = 'desc',
