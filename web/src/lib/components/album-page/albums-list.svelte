@@ -6,7 +6,7 @@
   import RightClickContextMenu from '$lib/components/shared-components/context-menu/right-click-context-menu.svelte';
   import AlbumEditModal from '$lib/modals/AlbumEditModal.svelte';
   import AlbumOptionsModal from '$lib/modals/AlbumOptionsModal.svelte';
-  import { handleDeleteAlbum, handleDownloadAlbum } from '$lib/services/album.service';
+  import { handleDeleteAlbum, handleDownloadAlbum, handleUpdateAlbum } from '$lib/services/album.service';
   import {
     AlbumFilter,
     AlbumGroupBy,
@@ -23,7 +23,7 @@
   import { normalizeSearchString } from '$lib/utils/string-utils';
   import { type AlbumResponseDto, type SharedLinkResponseDto } from '@immich/sdk';
   import { modalManager } from '@immich/ui';
-  import { mdiDeleteOutline, mdiDownload, mdiRenameOutline, mdiShareVariantOutline } from '@mdi/js';
+  import { mdiDeleteOutline, mdiDownload, mdiEyeOffOutline, mdiEyeOutline, mdiRenameOutline, mdiShareVariantOutline } from '@mdi/js';
   import { groupBy } from 'lodash-es';
   import { onMount, type Snippet } from 'svelte';
   import { t } from 'svelte-i18n';
@@ -188,7 +188,7 @@
     isOpen = false;
   };
 
-  const handleSelect = async (action: 'edit' | 'share' | 'download' | 'delete') => {
+  const handleSelect = async (action: 'edit' | 'share' | 'download' | 'delete' | 'toggle_timeline') => {
     closeAlbumContextMenu();
 
     if (!selectedAlbum) {
@@ -213,6 +213,11 @@
 
       case 'delete': {
         await handleDeleteAlbum(selectedAlbum);
+        break;
+      }
+
+      case 'toggle_timeline': {
+        await handleUpdateAlbum(selectedAlbum, { isOnTimeline: !selectedAlbum.isOnTimeline });
         break;
       }
     }
@@ -293,6 +298,11 @@
   {#if showFullContextMenu}
     <MenuOption icon={mdiRenameOutline} text={$t('edit_album')} onClick={() => handleSelect('edit')} />
     <MenuOption icon={mdiShareVariantOutline} text={$t('share')} onClick={() => handleSelect('share')} />
+    <MenuOption
+      icon={selectedAlbum?.isOnTimeline ? mdiEyeOffOutline : mdiEyeOutline}
+      text={selectedAlbum?.isOnTimeline ? $t('hide_from_timeline') : $t('show_on_timeline')}
+      onClick={() => handleSelect('toggle_timeline')}
+    />
   {/if}
   <MenuOption icon={mdiDownload} text={$t('download')} onClick={() => handleSelect('download')} />
   {#if showFullContextMenu}
