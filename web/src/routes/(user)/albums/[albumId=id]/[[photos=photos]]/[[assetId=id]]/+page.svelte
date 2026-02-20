@@ -43,6 +43,7 @@
     getAlbumAssetsActions,
     handleDeleteAlbum,
     handleDownloadAlbum,
+    handleUpdateAlbum,
   } from '$lib/services/album.service';
   import { getGlobalActions } from '$lib/services/app.service';
   import { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
@@ -63,6 +64,8 @@
     mdiDeleteOutline,
     mdiDotsVertical,
     mdiDownload,
+    mdiEyeOffOutline,
+    mdiEyeOutline,
     mdiImageOutline,
     mdiImagePlusOutline,
     mdiLink,
@@ -512,6 +515,17 @@
 
             {#if featureFlagsManager.value.map}
               <AlbumMap {album} />
+            {/if}
+
+            {#if isOwned}
+              <IconButton
+                shape="round"
+                variant="ghost"
+                color="secondary"
+                aria-label={album.isOnTimeline ? $t('hide_from_timeline') : $t('show_on_timeline')}
+                onclick={() => handleUpdateAlbum(album, { isOnTimeline: !album.isOnTimeline })}
+                icon={album.isOnTimeline ? mdiEyeOutline : mdiEyeOffOutline}
+              />
             {/if}
 
             {#if album.assetCount > 0}
