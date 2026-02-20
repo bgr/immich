@@ -82,7 +82,7 @@
         {#if isMain}
           <Icon icon={mdiAlert} size="1.5em" color="#ffcc4d" /> {info?.sourceRef}
         {:else}
-          {version}
+          {version}-fork
         {/if}
       </button>
     {:else}
