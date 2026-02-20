@@ -23,6 +23,7 @@
       {/if}
 
       <ServerAboutItem id="immich" title="Immich" version={info.version} versionHref={info.versionUrl} />
+      <ServerAboutItem id="fork" title="Fork" version="bgr/immich" versionHref="https://github.com/bgr/immich" />
       <ServerAboutItem id="exif" title="ExifTool" version={info.exiftool} />
       <ServerAboutItem id="nodejs" title="Node.js" version={info.nodejs} />
       <ServerAboutItem id="libvips" title="Libvips" version={info.libvips} />
