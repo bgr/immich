@@ -40,36 +40,49 @@ Volume mounts (same as the original ImageGenius container):
 
 ## Usage
 
-**First time** (sets up everything, generates config, creates the compose project):
+**First-time setup** for each Unraid machine (discovers config, creates compose project):
 
 ```bash
-./deploy.sh init-first-time-only
+./deploy.sh init unrd1       # creates .env.unrd1
+./deploy.sh init tower       # creates .env.tower
 ```
 
-**Subsequent updates** (rebuilds and pushes the latest code):
+**Build** the Docker image (once, from current source):
 
 ```bash
-./deploy.sh deploy
+./deploy.sh build
 ```
 
-Both commands walk you through each step and ask for confirmation. Pass `--yes` to skip
+**Push** the image to Unraid and restart the container:
+
+```bash
+./deploy.sh push unrd1       # push to a specific host
+./deploy.sh push             # push to all configured hosts
+```
+
+All commands walk you through each step and ask for confirmation. Pass `--yes` to skip
 confirmations (useful when run by automation or Claude Code).
 
-## What init-first-time-only does
+## What init does
 
-1. Reads config from the running ImageGenius container and generates `.env`
+1. Reads config from the running ImageGenius container and generates `.env.<name>`
 2. Clones the ImageGenius docker repo (for the s6-overlay service scripts)
 3. Backs up the database on Unraid
 4. Creates a Docker Compose Manager project on Unraid
 5. Stops the old container
 
-Then tells you to run `deploy`.
+Then tells you to run `build` and `push`.
 
-## What deploy does
+## What build does
 
-1. Builds the Docker image from current source
-2. Transfers it to Unraid
-3. Starts the container (or restarts with the new image)
+Builds the Docker image locally. This is independent of any host — you only need
+to build once, then push to as many machines as you want.
+
+## What push does
+
+1. Saves the image to a compressed archive (reused across hosts)
+2. Transfers it to the Unraid machine via SCP
+3. Loads the image and restarts the container
 
 ## Rollback
 

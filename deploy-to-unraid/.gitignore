@@ -1,4 +1,5 @@
 .env
+.env.*
 .build/
 imagegenius-docker/
 __pycache__/

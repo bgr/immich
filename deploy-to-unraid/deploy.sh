@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# deploy.sh — Build and deploy our Immich fork to an Unraid machine.
+# deploy.sh — Build and deploy our Immich fork to Unraid machines.
 #
 # This builds a custom ImageGenius-compatible Docker image with our code
 # and deploys it via Docker Compose Manager on Unraid.
 #
 # Usage:
-#   ./deploy.sh init-first-time-only   First-time setup
-#   ./deploy.sh deploy                 Build and push an update
+#   ./deploy.sh init <name>            First-time setup for a host (creates .env.<name>)
+#   ./deploy.sh build                  Build the Docker image (once)
+#   ./deploy.sh push <name>            Transfer image and restart on a specific host
+#   ./deploy.sh push                   Transfer image and restart on all configured hosts
 #   Add --yes to skip all confirmations
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
 IG_DOCKER_DIR="$SCRIPT_DIR/imagegenius-docker"
 BUILD_DIR="$SCRIPT_DIR/.build"
 
@@ -23,6 +24,7 @@ COMPOSE_PROJECT="immich-fork"
 
 AUTO_YES=false
 COMMAND=""
+TARGET=""
 
 # ---------------------------------------------------------------------------
 # Parse arguments
@@ -32,7 +34,15 @@ for arg in "$@"; do
   case "$arg" in
     --yes|-y) AUTO_YES=true ;;
     -*) echo "Unknown flag: $arg"; exit 1 ;;
-    *) COMMAND="$arg" ;;
+    *)
+      if [[ -z "$COMMAND" ]]; then
+        COMMAND="$arg"
+      elif [[ -z "$TARGET" ]]; then
+        TARGET="$arg"
+      else
+        echo "Unexpected argument: $arg"; exit 1
+      fi
+      ;;
   esac
 done
 
@@ -63,17 +73,36 @@ info()    { echo "  $1"; }
 ok()      { echo "  OK: $1"; }
 err()     { echo "  ERROR: $1" >&2; }
 
-# Source the .env file or exit if it doesn't exist
+# Return the .env file path for a given host name
+env_file_for() {
+  echo "$SCRIPT_DIR/.env.$1"
+}
+
+# Source the .env file for a given host name, or exit if it doesn't exist
 load_env() {
-  if [[ ! -f "$ENV_FILE" ]]; then
-    err "No .env file found at $ENV_FILE"
-    err "Run './deploy.sh init-first-time-only' first."
+  local name="$1"
+  local env_file
+  env_file=$(env_file_for "$name")
+  if [[ ! -f "$env_file" ]]; then
+    err "No config found for '$name' (expected $env_file)"
+    err "Run './deploy.sh init $name' first."
     exit 1
   fi
   set -a
   # shellcheck disable=SC1090
-  source "$ENV_FILE"
+  source "$env_file"
   set +a
+}
+
+# List all configured host names (derived from .env.* files)
+list_hosts() {
+  local hosts=()
+  for f in "$SCRIPT_DIR"/.env.*; do
+    [[ -f "$f" ]] || continue
+    local name="${f##*/.env.}"
+    hosts+=("$name")
+  done
+  echo "${hosts[@]}"
 }
 
 # Extract an env var value from a docker inspect JSON array of "KEY=VALUE" strings.
@@ -136,7 +165,7 @@ do_build() {
   # Make sure the ImageGenius repo is cloned
   if [[ ! -d "$IG_DOCKER_DIR/.git" ]]; then
     err "ImageGenius repo not found at $IG_DOCKER_DIR"
-    err "Run './deploy.sh init-first-time-only' first, or clone it manually:"
+    err "Run './deploy.sh init <name>' first, or clone it manually:"
     err "  git clone https://github.com/imagegenius/docker-immich.git $IG_DOCKER_DIR"
     exit 1
   fi
@@ -186,16 +215,17 @@ do_build() {
 }
 
 # ---------------------------------------------------------------------------
-# Transfer the image to Unraid
+# Transfer the image to a host
 # ---------------------------------------------------------------------------
 
 do_transfer() {
-  load_env
-
   local tar_file="$BUILD_DIR/$IMAGE_NAME.tar.gz"
 
-  info "Saving Docker image to compressed archive..."
-  docker save "$IMAGE_NAME:latest" | gzip > "$tar_file"
+  # Save the image to a compressed archive once (reuse across hosts)
+  if [[ ! -f "$tar_file" ]]; then
+    info "Saving Docker image to compressed archive..."
+    docker save "$IMAGE_NAME:latest" | gzip > "$tar_file"
+  fi
   local size
   size=$(du -h "$tar_file" | cut -f1)
   info "Archive size: $size"
@@ -216,8 +246,6 @@ do_transfer() {
 # ---------------------------------------------------------------------------
 
 do_backup() {
-  load_env
-
   local timestamp
   timestamp=$(date +%Y%m%d-%H%M%S)
   local remote_path="$IMMICH_CONFIG_PATH/immich-backup-$timestamp.sql"
@@ -290,8 +318,6 @@ do_backup() {
 # ---------------------------------------------------------------------------
 
 do_create_compose_project() {
-  load_env
-
   local project_dir="$COMPOSE_MANAGER_PROJECTS_DIR/$COMPOSE_PROJECT"
 
   info "Will create Docker Compose Manager project at:"
@@ -369,8 +395,6 @@ networks:
 # ---------------------------------------------------------------------------
 
 do_stop_old_container() {
-  load_env
-
   # Find the running ImageGenius container
   local old_container
   old_container=$(ssh "$UNRAID_HOST" \
@@ -393,8 +417,6 @@ do_stop_old_container() {
 }
 
 do_start_or_restart_container() {
-  load_env
-
   local project_dir="$COMPOSE_MANAGER_PROJECTS_DIR/$COMPOSE_PROJECT"
 
   info "Starting the Immich container (recreates if already running)..."
@@ -408,8 +430,6 @@ do_start_or_restart_container() {
 }
 
 do_verify() {
-  load_env
-
   info "Waiting 10 seconds for the container to initialize..."
   sleep 10
 
@@ -430,18 +450,28 @@ do_verify() {
 }
 
 # ---------------------------------------------------------------------------
-# Command: init-first-time-only
+# Command: init <name>
 # ---------------------------------------------------------------------------
 
 cmd_init() {
+  local name="$TARGET"
+  if [[ -z "$name" ]]; then
+    err "Usage: $0 init <name>"
+    err "Example: $0 init dumpy"
+    exit 1
+  fi
+
+  local env_file
+  env_file=$(env_file_for "$name")
+
   check_prerequisites
 
   echo ""
-  echo "=== First-time setup for deploying Immich fork to Unraid ==="
+  echo "=== First-time setup for '$name' ==="
   echo ""
   echo "This will:"
   echo "  1. Read config from your existing ImageGenius Immich container"
-  echo "  2. Generate a .env file for future deploys"
+  echo "  2. Generate $env_file for future deploys"
   echo "  3. Clone the ImageGenius docker repo (for s6-overlay scripts)"
   echo "  4. Back up the database"
   echo "  5. Set up a Docker Compose Manager project"
@@ -451,14 +481,13 @@ cmd_init() {
   # --- Get Unraid hostname ---
 
   if $AUTO_YES; then
-    err "Cannot run init-first-time-only with --yes (needs interactive input)."
+    err "Cannot run init with --yes (needs interactive input)."
     exit 1
   fi
 
-  read -rp "  Enter your Unraid SSH hostname: " UNRAID_HOST
+  read -rp "  Enter Unraid SSH hostname (press enter for '$name'): " UNRAID_HOST
   if [[ -z "$UNRAID_HOST" ]]; then
-    err "Hostname cannot be empty."
-    exit 1
+    UNRAID_HOST="$name"
   fi
 
   info "Testing SSH connection to $UNRAID_HOST..."
@@ -537,10 +566,10 @@ cmd_init() {
 
   # --- Step 2: Generate .env ---
 
-  step 2 "Generate .env file"
+  step 2 "Generate .env.$name"
 
-  cat > "$ENV_FILE" << EOF
-# Generated by deploy.sh init-first-time-only on $(date -Iseconds)
+  cat > "$env_file" << EOF
+# Generated by deploy.sh init $name on $(date -Iseconds)
 # Edit this file if any values need updating.
 
 # Unraid connection
@@ -584,16 +613,16 @@ COMPOSE_PROJECT=$COMPOSE_PROJECT
 COMPOSE_MANAGER_PROJECTS_DIR=/mnt/user/appdata/docker-compose-manager/projects
 EOF
 
-  info "Generated .env:"
+  info "Generated .env.$name:"
   echo ""
-  cat "$ENV_FILE" | sed 's/^/    /'
+  cat "$env_file" | sed 's/^/    /'
   echo ""
-  info "Review the values above. You can edit $ENV_FILE later if needed."
+  info "Review the values above. You can edit $env_file later if needed."
   confirm || exit 1
-  ok ".env saved."
+  ok ".env.$name saved."
 
   # Load it for subsequent steps
-  load_env
+  load_env "$name"
 
   # --- Step 3: Clone ImageGenius docker repo ---
 
@@ -630,47 +659,93 @@ EOF
   do_stop_old_container
 
   echo ""
-  echo "=== First-time setup complete ==="
+  echo "=== First-time setup for '$name' complete ==="
   echo ""
   info "IMPORTANT: Go to the Unraid web UI → Docker tab and disable auto-start"
   info "for the original 'immich' container, so it doesn't come back after a reboot."
   info "The new fork container auto-starts via Docker Compose Manager."
   info ""
-  info "Now run ./deploy.sh deploy to build the image and start the fork."
-  info "Use that same command for all future updates too."
+  info "Now run './deploy.sh build' to build the image,"
+  info "then './deploy.sh push $name' to transfer and start it."
 }
 
 # ---------------------------------------------------------------------------
-# Command: deploy
+# Command: build
 # ---------------------------------------------------------------------------
 
-cmd_deploy() {
+cmd_build() {
   check_prerequisites
-  load_env
 
   echo ""
-  echo "=== Deploy updated Immich fork to $UNRAID_HOST ==="
-  echo ""
-  echo "This will:"
-  echo "  1. Build the image from current source"
-  echo "  2. Transfer it to Unraid"
-  echo "  3. Start the container (or restart with the new image)"
+  echo "=== Build Immich fork Docker image ==="
   echo ""
 
-  step 1 "Build custom Docker image"
   do_build
+}
 
-  step 2 "Transfer image to Unraid"
+# ---------------------------------------------------------------------------
+# Command: push <name> | push (all)
+# ---------------------------------------------------------------------------
+
+do_push_one() {
+  local name="$1"
+  load_env "$name"
+
+  echo ""
+  echo "--- Pushing to $name ($UNRAID_HOST) ---"
+  echo ""
+
+  # Verify the image exists
+  if ! docker image inspect "$IMAGE_NAME:latest" &>/dev/null; then
+    err "Image $IMAGE_NAME:latest not found. Run './deploy.sh build' first."
+    exit 1
+  fi
+
   do_transfer
-
-  step 3 "Start container"
   do_start_or_restart_container
 
   echo ""
-  echo "=== Deploy complete ==="
-  echo ""
-  info "Immich fork updated on $UNRAID_HOST."
+  ok "$name ($UNRAID_HOST) updated."
   info "Web UI: http://$UNRAID_HOST:$HOST_PORT"
+}
+
+cmd_push() {
+  check_prerequisites
+
+  if [[ -n "$TARGET" ]]; then
+    # Push to a specific host
+    echo ""
+    echo "=== Push to $TARGET ==="
+    do_push_one "$TARGET"
+  else
+    # Push to all configured hosts
+    local hosts
+    hosts=$(list_hosts)
+    if [[ -z "$hosts" ]]; then
+      err "No configured hosts found (no .env.* files in $SCRIPT_DIR)."
+      err "Run './deploy.sh init <name>' first."
+      exit 1
+    fi
+
+    echo ""
+    echo "=== Push to all hosts: $hosts ==="
+
+    local failed=()
+    for name in $hosts; do
+      if ! do_push_one "$name"; then
+        failed+=("$name")
+        err "Failed to push to $name, continuing with remaining hosts..."
+      fi
+    done
+
+    echo ""
+    if [[ ${#failed[@]} -gt 0 ]]; then
+      err "Failed hosts: ${failed[*]}"
+      exit 1
+    else
+      echo "=== All hosts updated ==="
+    fi
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -678,21 +753,33 @@ cmd_deploy() {
 # ---------------------------------------------------------------------------
 
 case "${COMMAND:-}" in
-  init-first-time-only)
+  init)
     cmd_init
     ;;
-  deploy)
-    cmd_deploy
+  build)
+    cmd_build
+    ;;
+  push)
+    cmd_push
     ;;
   *)
-    echo "Usage: $0 <command> [--yes]"
+    echo "Usage: $0 <command> [<name>] [--yes]"
     echo ""
     echo "Commands:"
-    echo "  init-first-time-only   First-time setup (run once per Unraid machine)"
-    echo "  deploy                 Build and push an update"
+    echo "  init <name>    First-time setup for a host (creates .env.<name>)"
+    echo "  build          Build the Docker image locally"
+    echo "  push <name>    Transfer image and restart on a specific host"
+    echo "  push           Transfer image and restart on all configured hosts"
     echo ""
     echo "Flags:"
-    echo "  --yes, -y              Skip all confirmations"
+    echo "  --yes, -y      Skip all confirmations"
+    echo ""
+    hosts=$(list_hosts 2>/dev/null || true)
+    if [[ -n "$hosts" ]]; then
+      echo "Configured hosts: $hosts"
+    else
+      echo "No hosts configured yet. Run '$0 init <name>' to get started."
+    fi
     exit 1
     ;;
 esac
