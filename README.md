@@ -1,4 +1,98 @@
-<p align="center"> 
+# Fork info
+
+Quick summary of the changes done on this fork:
+
+* enhanced Partner Sharing
+* hide albums from timeline
+* fork info in version
+* Unraid deploy scripts
+
+more info below.
+
+## Branch management
+
+I'll be rebasing and force-pushing. I aim to have each of the changes on a separate branch, each branched out
+from `main`, at least until I start encountering conflicts. For my purposes I'll be merging all of them into
+'release' branches that I'll build the container from and upload it to my Unraid machine - I'll keep those
+branches around intact, if anything goes wrong I'll make new branches with new fixes merged in. There aren't
+any of those branches yet.
+
+## Feature branches
+
+### Branch `partner-sharing-improvements`
+
+Aims to make the UI experience for partners indistinguishable from owner's on the web. Partners will see
+image metadata, the geotags on the map, the recognized faces. The photos will appear in memories and in
+the "Map" sidebar, people and places will appear in "Explore" sidebar.
+
+This was done with my use-case in mind, so I might have some things in a blind spot, e.g. I'll have both
+the owner and the partners upload all images through the External Library exposed via the network share, so
+I didn't care about uploading through the web interface at all.
+
+**What works (web):**
+
+- Partner's people appear on the People page alongside your own
+- Clicking a partner's person shows all their photos (timeline loads correctly)
+- Partner's people appear in search/filter dropdowns (search bar, smart search filters)
+- Face info panel on assets shows partner's person names and links
+- Partner's people appear in Explore sidebar
+- Partner's places appear in Explore sidebar and on the Map
+- Partner's photos appear in Memories
+- Searching by person name finds both your own and partner's people
+- People page pagination handles >500 people across multiple partners
+
+**What doesn't work / known limitations:**
+
+- **People management is read-only for partners.** Only the person's owner can rename, hide, merge,
+  set birth dates, or change feature photos. Edit controls are hidden in the UI for partner people.
+- **Mobile app** does not show partner people. The Dart client would need regeneration to pick up new
+  types (`ownerId` on `PersonResponseDto`), and the mobile UI would need changes to pass `ownerId`
+  when loading a person's timeline. The existing mobile app won't break — it ignores unknown fields.
+- **No cross-user person merging.** You cannot merge a person from your library with a person from a
+  partner's library, even if they're the same real person. Each user's face clusters are independent.
+
+**Impact on other clients:**
+
+| Feature | Web | Mobile (no rebuild) | Mobile (with rebuild) |
+|---|---|---|---|
+| Memories | Works | Works (resolves assets from local sync DB) | Works |
+| Explore places | Works | Works (server returns partner cities) | Works |
+| Explore people | Works | No change | Needs code to pass `ownerId` |
+| Map | Works (default on) | No change (has own default) | One-line default change |
+| People page | Works | No change | Needs `ownerId` + UI changes |
+| Person detail | Works | No change | Needs `ownerId` for timeline |
+| People management | Read-only for partners | N/A | N/A |
+
+The OpenAPI spec and TypeScript SDK are regenerated and in sync.
+
+### Branch `hide-album-from-timeline`
+
+Note: I didn't get to test this out propery yet.
+
+Adds a per-album toggle to hide its assets from the main Photos timeline. The album itself remains visible and
+accessible — only its assets stop appearing in the timeline view. A closed-eye indicator is shown on album
+cards (cover view) and album rows (list view) when an album is hidden. The toggle is available in the album
+context menu on the albums list page and as an eye icon button in the album detail page toolbar.
+
+### Branch `version-show-fork`
+
+Adds `-fork` suffix to the version number in the sidebar and a "Fork" line in the About modal linking to this
+repo. Makes it clear to the user that they're running a fork.
+
+### Branch `unraid-switch`
+
+Scripts and Dockerfile patches for deploying this fork to an Unraid machine that already had the ImageGenius
+Immich set up and running. Builds a custom Docker image from local source, transfers it via SCP, and manages
+it through Docker Compose Manager. Includes a layer-splitting optimization so code-only changes skip the slow
+dependency installation step.
+
+---
+
+*Original README below*
+
+---
+
+<p align="center">
   <br/>
   <a href="https://opensource.org/license/agpl-v3"><img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg?color=3F51B5&style=for-the-badge&label=License&logoColor=000000&labelColor=ececec" alt="License: AGPLv3"></a>
   <a href="https://discord.immich.app">
