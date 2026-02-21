@@ -573,44 +573,44 @@ cmd_init() {
 # Edit this file if any values need updating.
 
 # Unraid connection
-UNRAID_HOST=$UNRAID_HOST
+UNRAID_HOST="$UNRAID_HOST"
 
 # Database
-DB_HOSTNAME=${db_hostname}
-DB_USERNAME=${db_username}
-DB_PASSWORD=${db_password}
-DB_PORT=${db_port:-5432}
-DB_DATABASE_NAME=${db_database_name:-immich}
+DB_HOSTNAME="${db_hostname}"
+DB_USERNAME="${db_username}"
+DB_PASSWORD="${db_password}"
+DB_PORT="${db_port:-5432}"
+DB_DATABASE_NAME="${db_database_name:-immich}"
 
 # Redis
-REDIS_HOSTNAME=${redis_hostname}
-REDIS_PASSWORD=${redis_password}
-REDIS_PORT=${redis_port:-6379}
+REDIS_HOSTNAME="${redis_hostname}"
+REDIS_PASSWORD="${redis_password}"
+REDIS_PORT="${redis_port:-6379}"
 
 # Container settings
-PUID=${puid:-99}
-PGID=${pgid:-100}
-TZ=${tz:-Etc/UTC}
-MACHINE_LEARNING_WORKERS=${ml_workers:-1}
-MACHINE_LEARNING_WORKER_TIMEOUT=${ml_worker_timeout:-120}
+PUID="${puid:-99}"
+PGID="${pgid:-100}"
+TZ="${tz:-Etc/UTC}"
+MACHINE_LEARNING_WORKERS="${ml_workers:-1}"
+MACHINE_LEARNING_WORKER_TIMEOUT="${ml_worker_timeout:-120}"
 
 # Volume paths on Unraid
-IMMICH_CONFIG_PATH=${config_path:-/mnt/user/appdata/immich}
-IMMICH_PHOTOS_PATH=${photos_path:-/mnt/user/ImmichLibrary}
-IMMICH_THUMBS_PATH=${thumbs_path:-/mnt/user/ImmichThumbnails}
-IMMICH_IMPORT_PATH=${import_path:-/mnt/user/ImmichImport}
+IMMICH_CONFIG_PATH="${config_path:-/mnt/user/appdata/immich}"
+IMMICH_PHOTOS_PATH="${photos_path:-/mnt/user/ImmichLibrary}"
+IMMICH_THUMBS_PATH="${thumbs_path:-/mnt/user/ImmichThumbnails}"
+IMMICH_IMPORT_PATH="${import_path:-/mnt/user/ImmichImport}"
 
 # Docker settings
-DOCKER_NETWORK=${network_name:-bridge}
-HOST_PORT=${host_port:-8080}
+DOCKER_NETWORK="${network_name:-bridge}"
+HOST_PORT="${host_port:-8080}"
 
 # Image and container naming
-IMAGE_NAME=$IMAGE_NAME
-CONTAINER_NAME=$CONTAINER_NAME
-COMPOSE_PROJECT=$COMPOSE_PROJECT
+IMAGE_NAME="$IMAGE_NAME"
+CONTAINER_NAME="$CONTAINER_NAME"
+COMPOSE_PROJECT="$COMPOSE_PROJECT"
 
 # Docker Compose Manager
-COMPOSE_MANAGER_PROJECTS_DIR=/mnt/user/appdata/docker-compose-manager/projects
+COMPOSE_MANAGER_PROJECTS_DIR="/mnt/user/appdata/docker-compose-manager/projects"
 EOF
 
   info "Generated .env.$name:"
