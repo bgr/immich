@@ -335,6 +335,12 @@ do_create_compose_project() {
   info "  $UNRAID_HOST:$project_dir"
 
   # Build the docker-compose.yml content
+  local thumbs_volume_line=""
+  if [[ -n "$IMMICH_THUMBS_PATH" ]]; then
+    thumbs_volume_line="
+      - ${IMMICH_THUMBS_PATH}:/photos/thumbs"
+  fi
+
   local compose_yml
   compose_yml="services:
   immich:
@@ -356,8 +362,7 @@ do_create_compose_project() {
       - MACHINE_LEARNING_WORKER_TIMEOUT=${MACHINE_LEARNING_WORKER_TIMEOUT}
     volumes:
       - ${IMMICH_CONFIG_PATH}:/config
-      - ${IMMICH_PHOTOS_PATH}:/photos
-      - ${IMMICH_THUMBS_PATH}:/photos/thumbs
+      - ${IMMICH_PHOTOS_PATH}:/photos${thumbs_volume_line}
       - ${IMMICH_IMPORT_PATH}:/import
     ports:
       - \"${HOST_PORT}:8080\"
@@ -378,15 +383,16 @@ networks:
       net.unraid.docker.webui: \"http://[IP]:${HOST_PORT}/\"
       net.unraid.docker.shell: bash"
 
-  info ""
-  info "docker-compose.yml:"
-  echo "$compose_yml" | sed 's/^/    /'
-  info ""
-  info "docker-compose.override.yml:"
-  echo "$override_yml" | sed 's/^/    /'
-  echo ""
-
-  confirm || exit 1
+  if ! $AUTO_YES; then
+    info ""
+    info "docker-compose.yml:"
+    echo "$compose_yml" | sed 's/^/    /'
+    info ""
+    info "docker-compose.override.yml:"
+    echo "$override_yml" | sed 's/^/    /'
+    echo ""
+    confirm || exit 1
+  fi
 
   # Create the project directory and files on Unraid
   ssh "$UNRAID_HOST" "mkdir -p '$project_dir'"
@@ -430,7 +436,11 @@ do_stop_old_container() {
 do_start_or_restart_container() {
   local project_dir="$COMPOSE_MANAGER_PROJECTS_DIR/$COMPOSE_PROJECT"
 
-  info "Starting the Immich container (recreates if already running)..."
+  # Regenerate compose files from current .env values (volume paths, ports,
+  # etc. may have changed since the initial setup).
+  do_create_compose_project
+
+  info "Starting the Immich container..."
   echo ""
   confirm || exit 1
 
@@ -613,8 +623,12 @@ MACHINE_LEARNING_WORKER_TIMEOUT="${ml_worker_timeout:-120}"
 # Volume paths on Unraid
 IMMICH_CONFIG_PATH="${config_path:-/mnt/user/appdata/immich}"
 IMMICH_PHOTOS_PATH="${photos_path:-/mnt/user/ImmichLibrary}"
-IMMICH_THUMBS_PATH="${thumbs_path:-/mnt/user/ImmichThumbnails}"
 IMMICH_IMPORT_PATH="${import_path:-/mnt/user/ImmichImport}"
+
+# Separate thumbs volume (optional). If the old container had a dedicated mount
+# for /photos/thumbs, we preserve it here. If empty, thumbs live inside the
+# photos volume at /photos/thumbs (the Immich default) and no extra mount is needed.
+IMMICH_THUMBS_PATH="${thumbs_path}"
 
 # Docker settings
 DOCKER_NETWORK="${network_name:-bridge}"
