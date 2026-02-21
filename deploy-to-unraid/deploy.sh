@@ -431,11 +431,16 @@ do_start_or_restart_container() {
   local project_dir="$COMPOSE_MANAGER_PROJECTS_DIR/$COMPOSE_PROJECT"
 
   info "Starting the Immich container (recreates if already running)..."
-  info "Command: cd $project_dir && docker compose up -d --force-recreate"
   echo ""
   confirm || exit 1
 
-  ssh "$UNRAID_HOST" "cd '$project_dir' && docker compose up -d --force-recreate"
+  # Remove any existing container with this name. docker compose --force-recreate
+  # only handles containers it manages — if one was created outside this compose
+  # project (e.g. from a previous deploy with a different project path), compose
+  # can't replace it and fails with a name conflict.
+  ssh "$UNRAID_HOST" "docker rm -f '$CONTAINER_NAME' 2>/dev/null || true"
+
+  ssh "$UNRAID_HOST" "cd '$project_dir' && docker compose up -d"
 
   do_verify
 }
