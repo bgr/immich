@@ -230,13 +230,24 @@ do_transfer() {
   size=$(du -h "$tar_file" | cut -f1)
   info "Archive size: $size"
 
-  info "Transferring to $UNRAID_HOST (this may take a few minutes)..."
-  echo ""
-  confirm || exit 1
-
+  info "Transferring to $UNRAID_HOST..."
   scp "$tar_file" "$UNRAID_HOST:/tmp/$IMAGE_NAME.tar.gz"
+
   info "Loading image on $UNRAID_HOST..."
   ssh "$UNRAID_HOST" "docker load -i /tmp/$IMAGE_NAME.tar.gz && rm /tmp/$IMAGE_NAME.tar.gz"
+
+  # Clean up old images that were replaced by the new one. When Docker loads
+  # a new image with the same tag, the previous version loses its tag and
+  # becomes a "dangling" image that wastes disk space.
+  local pruned
+  pruned=$(ssh "$UNRAID_HOST" "docker image prune -f" 2>/dev/null || true)
+  if echo "$pruned" | grep -q "Total reclaimed space: 0B"; then
+    :  # nothing to report
+  elif echo "$pruned" | grep -q "Total reclaimed space:"; then
+    local reclaimed
+    reclaimed=$(echo "$pruned" | grep "Total reclaimed space:" | sed 's/Total reclaimed space: //')
+    info "Cleaned up old images, freed $reclaimed."
+  fi
 
   ok "Image loaded on $UNRAID_HOST."
 }
@@ -687,64 +698,190 @@ cmd_build() {
 # Command: push <name> | push (all)
 # ---------------------------------------------------------------------------
 
-do_push_one() {
-  local name="$1"
-  load_env "$name"
+cmd_push() {
+  check_prerequisites
+
+  # Determine which hosts to push to
+  local hosts=()
+  if [[ -n "$TARGET" ]]; then
+    hosts=("$TARGET")
+  else
+    read -ra hosts <<< "$(list_hosts)"
+    if [[ ${#hosts[@]} -eq 0 ]]; then
+      err "No configured hosts found (no .env.* files in $SCRIPT_DIR)."
+      err "Run './deploy.sh init <name>' first."
+      exit 1
+    fi
+  fi
 
   echo ""
-  echo "--- Pushing to $name ($UNRAID_HOST) ---"
-  echo ""
+  echo "=== Push to: ${hosts[*]} ==="
 
-  # Verify the image exists
+  # Verify the image exists locally
   if ! docker image inspect "$IMAGE_NAME:latest" &>/dev/null; then
     err "Image $IMAGE_NAME:latest not found. Run './deploy.sh build' first."
     exit 1
   fi
 
-  do_transfer
-  do_start_or_restart_container
+  local image_bytes
+  image_bytes=$(docker image inspect "$IMAGE_NAME:latest" --format '{{.Size}}')
+  local image_mb=$(( image_bytes / 1024 / 1024 ))
+
+  # ─── Phase 1: Pre-flight checks ───
 
   echo ""
-  ok "$name ($UNRAID_HOST) updated."
-  info "Web UI: http://$UNRAID_HOST:$HOST_PORT"
-}
+  info "Pre-flight checks (image size: ${image_mb}MB)..."
+  echo ""
 
-cmd_push() {
-  check_prerequisites
+  local hosts_need_cleanup=()
+  local hosts_low_space=()
 
-  if [[ -n "$TARGET" ]]; then
-    # Push to a specific host
-    echo ""
-    echo "=== Push to $TARGET ==="
-    do_push_one "$TARGET"
-  else
-    # Push to all configured hosts
-    local hosts
-    hosts=$(list_hosts)
-    if [[ -z "$hosts" ]]; then
-      err "No configured hosts found (no .env.* files in $SCRIPT_DIR)."
-      err "Run './deploy.sh init <name>' first."
-      exit 1
-    fi
+  for name in "${hosts[@]}"; do
+    load_env "$name"
+    info "  $name ($UNRAID_HOST):"
 
-    echo ""
-    echo "=== Push to all hosts: $hosts ==="
+    # Free space in Docker's storage
+    local avail_kb
+    avail_kb=$(ssh "$UNRAID_HOST" "df --output=avail /var/lib/docker | tail -1" | tr -d ' ')
+    local avail_mb=$(( avail_kb / 1024 ))
 
-    local failed=()
-    for name in $hosts; do
-      if ! do_push_one "$name"; then
-        failed+=("$name")
-        err "Failed to push to $name, continuing with remaining hosts..."
+    # Dangling images — old versions that lost their tag after an update.
+    local orphan_count=0
+    local orphan_mb=0
+    local orphan_info
+    orphan_info=$(ssh "$UNRAID_HOST" "
+      ids=\$(docker images -f dangling=true -q)
+      if [ -n \"\$ids\" ]; then
+        count=\$(echo \"\$ids\" | wc -l)
+        bytes=\$(echo \"\$ids\" | xargs docker image inspect --format '{{.Size}}' | awk '{s+=\$1} END {print s+0}')
+        echo \"\$count \$bytes\"
       fi
-    done
+    ")
+    if [[ -n "$orphan_info" ]]; then
+      orphan_count=$(echo "$orphan_info" | awk '{print $1}')
+      local orphan_bytes
+      orphan_bytes=$(echo "$orphan_info" | awk '{print $2}')
+      orphan_mb=$(( orphan_bytes / 1024 / 1024 ))
+    fi
+
+    info "    Docker free space: ${avail_mb}MB"
+    if [[ "$orphan_count" -gt 0 ]]; then
+      info "    Orphaned images: $orphan_count (${orphan_mb}MB reclaimable)"
+      hosts_need_cleanup+=("$name")
+    fi
+
+    # We need space for the full uncompressed image + headroom.
+    local needed_mb=$(( image_mb + 2048 ))
+    if [[ "$avail_mb" -lt "$needed_mb" ]]; then
+      hosts_low_space+=("$name")
+    fi
+  done
+
+  echo ""
+
+  # ─── Offer orphan cleanup ───
+
+  if [[ ${#hosts_need_cleanup[@]} -gt 0 ]]; then
+    if [[ ${#hosts_low_space[@]} -gt 0 ]]; then
+      info "Some hosts are low on Docker disk space."
+    fi
 
     echo ""
-    if [[ ${#failed[@]} -gt 0 ]]; then
-      err "Failed hosts: ${failed[*]}"
-      exit 1
-    else
-      echo "=== All hosts updated ==="
+    info "Orphaned images were found on: ${hosts_need_cleanup[*]}"
+    echo ""
+    info "  When Docker loads a new version of an image (like during a previous push),"
+    info "  the old version sticks around unnamed. These aren't used by anything — your"
+    info "  running containers and data are not affected. Removing them just frees up"
+    info "  space inside Docker's storage area."
+    echo ""
+    if $AUTO_YES; then
+      info "Removing orphaned images (--yes)..."
     fi
+    if $AUTO_YES || { read -rp "  Remove orphaned images? [Y/n] " answer && [[ ! "$answer" =~ ^[Nn]$ ]]; }; then
+      for name in "${hosts_need_cleanup[@]}"; do
+        load_env "$name"
+        info "  Cleaning up on $UNRAID_HOST..."
+        local pruned
+        pruned=$(ssh "$UNRAID_HOST" "docker image prune -f" 2>/dev/null || true)
+        local reclaimed
+        reclaimed=$(echo "$pruned" | grep "Total reclaimed space:" | sed 's/Total reclaimed space: //')
+        ok "$UNRAID_HOST: freed ${reclaimed:-0B}."
+      done
+      echo ""
+
+      # Re-check space on hosts that were low
+      hosts_low_space=()
+      local needed_mb=$(( image_mb + 2048 ))
+      for name in "${hosts[@]}"; do
+        load_env "$name"
+        local avail_kb
+        avail_kb=$(ssh "$UNRAID_HOST" "df --output=avail /var/lib/docker | tail -1" | tr -d ' ')
+        local avail_mb=$(( avail_kb / 1024 ))
+        if [[ "$avail_mb" -lt "$needed_mb" ]]; then
+          hosts_low_space+=("$name")
+        fi
+      done
+    fi
+  fi
+
+  # ─── Final space check ───
+
+  if [[ ${#hosts_low_space[@]} -gt 0 ]]; then
+    echo ""
+    local needed_mb=$(( image_mb + 2048 ))
+    err "Not enough Docker disk space on: ${hosts_low_space[*]}"
+    for name in "${hosts_low_space[@]}"; do
+      load_env "$name"
+      local avail_kb
+      avail_kb=$(ssh "$UNRAID_HOST" "df --output=avail /var/lib/docker | tail -1" | tr -d ' ')
+      local avail_mb=$(( avail_kb / 1024 ))
+      err "  $name: ${avail_mb}MB free, need ~${needed_mb}MB"
+    done
+    echo ""
+    info "To fix this, increase Docker vDisk size in Unraid → Settings → Docker,"
+    info "or manually free space: ssh <host> docker system prune -a"
+    exit 1
+  fi
+
+  ok "All pre-flight checks passed."
+
+  # ─── Phase 2: Deploy (runs unattended from here) ───
+
+  # All checks passed. From here on, skip confirmations so the user can
+  # walk away and come back when it's done.
+  AUTO_YES=true
+
+  local failed=()
+  for name in "${hosts[@]}"; do
+    load_env "$name"
+
+    echo ""
+    echo "--- Deploying to $name ($UNRAID_HOST) ---"
+    echo ""
+
+    if ! do_transfer; then
+      failed+=("$name")
+      err "Failed to transfer to $name, continuing with remaining hosts..."
+      continue
+    fi
+
+    if ! do_start_or_restart_container; then
+      failed+=("$name")
+      err "Failed to start container on $name, continuing with remaining hosts..."
+      continue
+    fi
+
+    echo ""
+    ok "$name ($UNRAID_HOST) updated."
+    info "Web UI: http://$UNRAID_HOST:$HOST_PORT"
+  done
+
+  echo ""
+  if [[ ${#failed[@]} -gt 0 ]]; then
+    err "Failed hosts: ${failed[*]}"
+    exit 1
+  else
+    echo "=== All hosts updated ==="
   fi
 }
 
