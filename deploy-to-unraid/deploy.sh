@@ -73,6 +73,9 @@ info()    { echo "  $1"; }
 ok()      { echo "  OK: $1"; }
 err()     { echo "  ERROR: $1" >&2; }
 
+# Format a host label: "name (host)" if different, just "name" if same.
+host_label() { if [[ "$1" == "$UNRAID_HOST" ]]; then echo "$1"; else echo "$1 ($UNRAID_HOST)"; fi; }
+
 # Return the .env file path for a given host name
 env_file_for() {
   echo "$SCRIPT_DIR/.env.$1"
@@ -328,21 +331,16 @@ do_backup() {
 # Create Docker Compose Manager project on Unraid
 # ---------------------------------------------------------------------------
 
-do_create_compose_project() {
-  local project_dir="$COMPOSE_MANAGER_PROJECTS_DIR/$COMPOSE_PROJECT"
-
-  info "Will create Docker Compose Manager project at:"
-  info "  $UNRAID_HOST:$project_dir"
-
-  # Build the docker-compose.yml content
+# Build the docker-compose.yml and override content strings.
+# Sets COMPOSE_YML and OVERRIDE_YML variables for the caller.
+build_compose_yml() {
   local thumbs_volume_line=""
   if [[ -n "$IMMICH_THUMBS_PATH" ]]; then
     thumbs_volume_line="
       - ${IMMICH_THUMBS_PATH}:/photos/thumbs"
   fi
 
-  local compose_yml
-  compose_yml="services:
+  COMPOSE_YML="services:
   immich:
     image: ${IMAGE_NAME}:latest
     container_name: ${CONTAINER_NAME}
@@ -374,37 +372,42 @@ networks:
   ${DOCKER_NETWORK}:
     external: true"
 
-  local override_yml
-  override_yml="services:
+  OVERRIDE_YML="services:
   immich:
     labels:
       net.unraid.docker.managed: composeman
       net.unraid.docker.icon: \"https://immich.app/img/immich-logo.svg\"
       net.unraid.docker.webui: \"http://[IP]:${HOST_PORT}/\"
       net.unraid.docker.shell: bash"
+}
 
-  if ! $AUTO_YES; then
-    info ""
-    info "docker-compose.yml:"
-    echo "$compose_yml" | sed 's/^/    /'
-    info ""
-    info "docker-compose.override.yml:"
-    echo "$override_yml" | sed 's/^/    /'
-    echo ""
-    confirm || exit 1
-  fi
+# Show the compose YAML for review (no files written).
+do_preview_compose_project() {
+  build_compose_yml
+  info ""
+  info "docker-compose.yml:"
+  echo "$COMPOSE_YML" | sed 's/^/    /'
+  info ""
+  info "docker-compose.override.yml:"
+  echo "$OVERRIDE_YML" | sed 's/^/    /'
+  echo ""
+}
 
-  # Create the project directory and files on Unraid
+# Write the compose project files to the remote host.
+do_create_compose_project() {
+  local project_dir="$COMPOSE_MANAGER_PROJECTS_DIR/$COMPOSE_PROJECT"
+
+  build_compose_yml
+
   ssh "$UNRAID_HOST" "mkdir -p '$project_dir'"
-  echo "$compose_yml" | ssh "$UNRAID_HOST" "cat > '$project_dir/docker-compose.yml'"
-  echo "$override_yml" | ssh "$UNRAID_HOST" "cat > '$project_dir/docker-compose.override.yml'"
+  echo "$COMPOSE_YML" | ssh "$UNRAID_HOST" "cat > '$project_dir/docker-compose.yml'"
+  echo "$OVERRIDE_YML" | ssh "$UNRAID_HOST" "cat > '$project_dir/docker-compose.override.yml'"
 
-  # Create compose manager metadata files
   ssh "$UNRAID_HOST" "echo '$COMPOSE_PROJECT' > '$project_dir/name'"
   ssh "$UNRAID_HOST" "echo 'true' > '$project_dir/autostart'"
   ssh "$UNRAID_HOST" "echo 'Immich fork with partner sharing improvements' > '$project_dir/description'"
 
-  ok "Compose project created."
+  ok "Compose project updated on $UNRAID_HOST."
 }
 
 # ---------------------------------------------------------------------------
@@ -678,10 +681,13 @@ EOF
   step 4 "Back up the database"
   do_backup
 
-  # --- Step 5: Create Docker Compose project ---
+  # --- Step 5: Preview Docker Compose project ---
 
-  step 5 "Create Docker Compose Manager project on Unraid"
-  do_create_compose_project
+  step 5 "Preview Docker Compose Manager project"
+
+  info "This is what will be deployed on the first push:"
+  # Show the compose YAML for review (the actual files are written during push).
+  do_preview_compose_project
 
   # --- Step 6: Stop old container ---
 
@@ -757,7 +763,7 @@ cmd_push() {
 
   for name in "${hosts[@]}"; do
     load_env "$name"
-    info "  $name ($UNRAID_HOST):"
+    info "  $(host_label "$name"):"
 
     # Free space in Docker's storage
     local avail_kb
@@ -875,7 +881,7 @@ cmd_push() {
     load_env "$name"
 
     echo ""
-    echo "--- Deploying to $name ($UNRAID_HOST) ---"
+    echo "--- Deploying to $(host_label "$name") ---"
     echo ""
 
     if ! do_transfer; then
@@ -891,7 +897,7 @@ cmd_push() {
     fi
 
     echo ""
-    ok "$name ($UNRAID_HOST) updated."
+    ok "$(host_label "$name") updated."
     info "Web UI: http://$UNRAID_HOST:$HOST_PORT"
   done
 
