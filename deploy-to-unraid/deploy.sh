@@ -239,19 +239,6 @@ do_transfer() {
   info "Loading image on $UNRAID_HOST..."
   ssh "$UNRAID_HOST" "docker load -i /tmp/$IMAGE_NAME.tar.gz && rm /tmp/$IMAGE_NAME.tar.gz"
 
-  # Clean up old images that were replaced by the new one. When Docker loads
-  # a new image with the same tag, the previous version loses its tag and
-  # becomes a "dangling" image that wastes disk space.
-  local pruned
-  pruned=$(ssh "$UNRAID_HOST" "docker image prune -f" 2>/dev/null || true)
-  if echo "$pruned" | grep -q "Total reclaimed space: 0B"; then
-    :  # nothing to report
-  elif echo "$pruned" | grep -q "Total reclaimed space:"; then
-    local reclaimed
-    reclaimed=$(echo "$pruned" | grep "Total reclaimed space:" | sed 's/Total reclaimed space: //')
-    info "Cleaned up old images, freed $reclaimed."
-  fi
-
   ok "Image loaded on $UNRAID_HOST."
 }
 
@@ -444,8 +431,6 @@ do_start_or_restart_container() {
   do_create_compose_project
 
   info "Starting the Immich container..."
-  echo ""
-  confirm || exit 1
 
   # Remove any existing container with this name. docker compose --force-recreate
   # only handles containers it manages — if one was created outside this compose
@@ -894,6 +879,17 @@ cmd_push() {
       failed+=("$name")
       err "Failed to start container on $name, continuing with remaining hosts..."
       continue
+    fi
+
+    # Clean up old images now that the container is running the new one.
+    # Before the restart, the old image was still referenced by the container
+    # and docker image prune would skip it.
+    local pruned
+    pruned=$(ssh "$UNRAID_HOST" "docker image prune -f" 2>/dev/null || true)
+    if echo "$pruned" | grep -q "Total reclaimed space:" && ! echo "$pruned" | grep -q "Total reclaimed space: 0B"; then
+      local reclaimed
+      reclaimed=$(echo "$pruned" | grep "Total reclaimed space:" | sed 's/Total reclaimed space: //')
+      info "Cleaned up old images, freed $reclaimed."
     fi
 
     echo ""
