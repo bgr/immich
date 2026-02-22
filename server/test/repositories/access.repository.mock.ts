@@ -20,6 +20,7 @@ export const newAccessRepositoryMock = (): IAccessRepositoryMock => {
       checkOwnerAccess: vitest.fn().mockResolvedValue(new Set()),
       checkAlbumAccess: vitest.fn().mockResolvedValue(new Set()),
       checkPartnerAccess: vitest.fn().mockResolvedValue(new Set()),
+      checkPartnerEditorAccess: vitest.fn().mockResolvedValue(new Set()),
       checkSharedLinkAccess: vitest.fn().mockResolvedValue(new Set()),
     },
 
@@ -35,6 +36,7 @@ export const newAccessRepositoryMock = (): IAccessRepositoryMock => {
 
     memory: {
       checkOwnerAccess: vitest.fn().mockResolvedValue(new Set()),
+      checkPartnerAccess: vitest.fn().mockResolvedValue(new Set()),
     },
 
     notification: {
@@ -44,6 +46,7 @@ export const newAccessRepositoryMock = (): IAccessRepositoryMock => {
     person: {
       checkFaceOwnerAccess: vitest.fn().mockResolvedValue(new Set()),
       checkOwnerAccess: vitest.fn().mockResolvedValue(new Set()),
+      checkPartnerAccess: vitest.fn().mockResolvedValue(new Set()),
     },
 
     partner: {

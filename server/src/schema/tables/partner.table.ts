@@ -44,6 +44,9 @@ export class PartnerTable {
   @Column({ type: 'boolean', default: false })
   inTimeline!: Generated<boolean>;
 
+  @Column({ type: 'character varying', default: 'viewer' })
+  accessLevel!: Generated<string>;
+
   @UpdateIdColumn({ index: true })
   updateId!: Generated<string>;
 }

@@ -109,7 +109,7 @@ describe(PartnerService.name, () => {
       await expect(sut.update(auth, user2.id, { inTimeline: false })).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('should update partner', async () => {
+    it('should update partner inTimeline', async () => {
       const user1 = factory.user();
       const user2 = factory.user();
       const partner = factory.partner({ sharedBy: user1, sharedWith: user2 });
@@ -122,6 +122,38 @@ describe(PartnerService.name, () => {
       expect(mocks.partner.update).toHaveBeenCalledWith(
         { sharedById: user2.id, sharedWithId: user1.id },
         { inTimeline: true },
+      );
+    });
+
+    it('should update partner accessLevel', async () => {
+      const user1 = factory.user();
+      const user2 = factory.user();
+      const partner = factory.partner({ sharedBy: user1, sharedWith: user2, accessLevel: 'editor' });
+      const auth = factory.auth({ user: { id: user1.id } });
+
+      mocks.access.partner.checkUpdateAccess.mockResolvedValue(new Set([user2.id]));
+      mocks.partner.update.mockResolvedValue(partner);
+
+      await expect(sut.update(auth, user2.id, { accessLevel: 'editor' as any })).resolves.toBeDefined();
+      expect(mocks.partner.update).toHaveBeenCalledWith(
+        { sharedById: user2.id, sharedWithId: user1.id },
+        { accessLevel: 'editor' },
+      );
+    });
+
+    it('should update both inTimeline and accessLevel', async () => {
+      const user1 = factory.user();
+      const user2 = factory.user();
+      const partner = factory.partner({ sharedBy: user1, sharedWith: user2, accessLevel: 'editor' });
+      const auth = factory.auth({ user: { id: user1.id } });
+
+      mocks.access.partner.checkUpdateAccess.mockResolvedValue(new Set([user2.id]));
+      mocks.partner.update.mockResolvedValue(partner);
+
+      await expect(sut.update(auth, user2.id, { inTimeline: true, accessLevel: 'editor' as any })).resolves.toBeDefined();
+      expect(mocks.partner.update).toHaveBeenCalledWith(
+        { sharedById: user2.id, sharedWithId: user1.id },
+        { inTimeline: true, accessLevel: 'editor' },
       );
     });
   });

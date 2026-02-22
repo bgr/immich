@@ -14,6 +14,7 @@
   import { boundingBoxesArray } from '$lib/stores/people.store';
   import { locale } from '$lib/stores/preferences.store';
   import { preferences, user } from '$lib/stores/user.store';
+  import { isEditorPartner } from '$lib/stores/partner-access.store';
   import { getAssetMediaUrl, getPeopleThumbnailUrl } from '$lib/utils';
   import { delay, getDimensions } from '$lib/utils/asset-utils';
   import { getByteUnitString } from '$lib/utils/byte-units';
@@ -52,6 +53,7 @@
   let showAssetPath = $state(false);
   let showEditFaces = $state(false);
   let isOwner = $derived($user?.id === asset.ownerId);
+  let canEdit = $derived(isOwner || isEditorPartner(asset.ownerId));
   let people = $derived(asset.people || []);
   let unassignedFaces = $derived(asset.unassignedFaces || []);
   let showingHiddenPeople = $state(false);
@@ -107,7 +109,7 @@
   const toggleAssetPath = () => (showAssetPath = !showAssetPath);
 
   const handleChangeDate = async () => {
-    if (!isOwner) {
+    if (!canEdit) {
       return;
     }
 
@@ -154,47 +156,49 @@
     </section>
   {/if}
 
-  <DetailPanelDescription {asset} {isOwner} />
-  <DetailPanelRating {asset} {isOwner} />
+  <DetailPanelDescription {asset} isOwner={canEdit} />
+  <DetailPanelRating {asset} isOwner={canEdit} />
 
-  {#if !authManager.isSharedLink && isOwner}
+  {#if !authManager.isSharedLink && (isOwner || people.length > 0)}
     <section class="px-4 pt-4 text-sm">
       <div class="flex h-10 w-full items-center justify-between">
         <Text size="small" color="muted">{$t('people')}</Text>
-        <div class="flex gap-2 items-center">
-          {#if people.some((person) => person.isHidden)}
+        {#if isOwner}
+          <div class="flex gap-2 items-center">
+            {#if people.some((person) => person.isHidden)}
+              <IconButton
+                aria-label={$t('show_hidden_people')}
+                icon={showingHiddenPeople ? mdiEyeOff : mdiEye}
+                size="medium"
+                shape="round"
+                color="secondary"
+                variant="ghost"
+                onclick={() => (showingHiddenPeople = !showingHiddenPeople)}
+              />
+            {/if}
             <IconButton
-              aria-label={$t('show_hidden_people')}
-              icon={showingHiddenPeople ? mdiEyeOff : mdiEye}
+              aria-label={$t('tag_people')}
+              icon={mdiPlus}
               size="medium"
               shape="round"
               color="secondary"
               variant="ghost"
-              onclick={() => (showingHiddenPeople = !showingHiddenPeople)}
+              onclick={() => (isFaceEditMode.value = !isFaceEditMode.value)}
             />
-          {/if}
-          <IconButton
-            aria-label={$t('tag_people')}
-            icon={mdiPlus}
-            size="medium"
-            shape="round"
-            color="secondary"
-            variant="ghost"
-            onclick={() => (isFaceEditMode.value = !isFaceEditMode.value)}
-          />
 
-          {#if people.length > 0 || unassignedFaces.length > 0}
-            <IconButton
-              aria-label={$t('edit_people')}
-              icon={mdiPencil}
-              size="medium"
-              shape="round"
-              color="secondary"
-              variant="ghost"
-              onclick={() => (showEditFaces = true)}
-            />
-          {/if}
-        </div>
+            {#if people.length > 0 || unassignedFaces.length > 0}
+              <IconButton
+                aria-label={$t('edit_people')}
+                icon={mdiPencil}
+                size="medium"
+                shape="round"
+                color="secondary"
+                variant="ghost"
+                onclick={() => (showEditFaces = true)}
+              />
+            {/if}
+          </div>
+        {/if}
       </div>
 
       <div class="mt-2 flex flex-wrap gap-2">
@@ -270,8 +274,8 @@
         type="button"
         class="flex w-full text-start justify-between place-items-start gap-4 py-4"
         onclick={handleChangeDate}
-        title={isOwner ? $t('edit_date') : ''}
-        class:hover:text-primary={isOwner}
+        title={canEdit ? $t('edit_date') : ''}
+        class:hover:text-primary={canEdit}
       >
         <div class="flex gap-4">
           <div>
@@ -306,13 +310,13 @@
           </div>
         </div>
 
-        {#if isOwner}
+        {#if canEdit}
           <div class="p-1">
             <Icon icon={mdiPencil} size="20" />
           </div>
         {/if}
       </button>
-    {:else if !dateTime && isOwner}
+    {:else if !dateTime && canEdit}
       <div class="flex justify-between place-items-start gap-4 py-4">
         <div class="flex gap-4">
           <div>
@@ -331,7 +335,7 @@
       <div>
         <p class="break-all flex place-items-center gap-2 whitespace-pre-wrap">
           {asset.originalFileName}
-          {#if isOwner}
+          {#if isOwner || !authManager.isSharedLink}
             <IconButton
               icon={mdiInformationOutline}
               aria-label={$t('show_file_location')}
@@ -434,7 +438,7 @@
       </div>
     {/if}
 
-    <DetailPanelLocation {isOwner} {asset} />
+    <DetailPanelLocation isOwner={canEdit} {asset} />
   </div>
 </section>
 

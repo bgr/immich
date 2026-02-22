@@ -21,12 +21,13 @@
 
   type Props = {
     person: PersonResponseDto;
+    canEdit?: boolean;
     onMergePeople: () => void;
     onHidePerson: () => void;
     onToggleFavorite: () => void;
   };
 
-  let { person, onMergePeople, onHidePerson, onToggleFavorite }: Props = $props();
+  let { person, canEdit = true, onMergePeople, onHidePerson, onToggleFavorite }: Props = $props();
 
   let showVerticalDots = $state(false);
 
@@ -64,7 +65,7 @@
     </div>
   </a>
 
-  {#if showVerticalDots}
+  {#if showVerticalDots && canEdit}
     <div class="absolute top-2 end-2 z-1">
       <ButtonContextMenu
         buttonClass="icon-white-drop-shadow"

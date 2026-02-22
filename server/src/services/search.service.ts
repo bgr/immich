@@ -29,7 +29,20 @@ export class SearchService extends BaseService {
   private embeddingCache = new LRUMap<string, string>(100);
 
   async searchPerson(auth: AuthDto, dto: SearchPeopleDto): Promise<PersonResponseDto[]> {
-    const people = await this.personRepository.getByName(auth.user.id, dto.name, { withHidden: dto.withHidden });
+    const userIds = await this.getUserIdsToSearch(auth);
+    const results = await Promise.all(
+      userIds.map((userId) => this.personRepository.getByName(userId, dto.name, { withHidden: dto.withHidden })),
+    );
+    const seenIds = new Set<string>();
+    const people = [];
+    for (const result of results) {
+      for (const person of result) {
+        if (!seenIds.has(person.id)) {
+          seenIds.add(person.id);
+          people.push(person);
+        }
+      }
+    }
     return people.map((person) => mapPerson(person));
   }
 
@@ -40,7 +53,8 @@ export class SearchService extends BaseService {
 
   async getExploreData(auth: AuthDto) {
     const options = { maxFields: 12, minAssetsPerField: 5 };
-    const cities = await this.assetRepository.getAssetIdByCity(auth.user.id, options);
+    const userIds = await this.getUserIdsToSearch(auth);
+    const cities = await this.assetRepository.getAssetIdByCity(userIds, options);
     const assets = await this.assetRepository.getByIdsWithAllRelationsButStacks(cities.items.map(({ data }) => data));
     const items = assets.map((asset) => ({ value: asset.exifInfo!.city!, data: mapAsset(asset, { auth }) }));
     return [{ fieldName: cities.fieldName, items }];

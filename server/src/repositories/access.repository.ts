@@ -215,6 +215,33 @@ class AssetAccess {
 
   @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
   @ChunkedSet({ paramIndex: 1 })
+  async checkPartnerEditorAccess(userId: string, assetIds: Set<string>) {
+    if (assetIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('partner')
+      .innerJoin('user as sharedBy', (join) =>
+        join.onRef('sharedBy.id', '=', 'partner.sharedById').on('sharedBy.deletedAt', 'is', null),
+      )
+      .innerJoin('asset', (join) => join.onRef('asset.ownerId', '=', 'sharedBy.id').on('asset.deletedAt', 'is', null))
+      .select('asset.id')
+      .where('partner.sharedWithId', '=', userId)
+      .where('partner.accessLevel', '=', 'editor')
+      .where((eb) =>
+        eb.or([
+          eb('asset.visibility', '=', sql.lit(AssetVisibility.Timeline)),
+          eb('asset.visibility', '=', sql.lit(AssetVisibility.Hidden)),
+        ]),
+      )
+      .where('asset.id', 'in', [...assetIds])
+      .execute()
+      .then((assets) => new Set(assets.map((asset) => asset.id)));
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
   async checkSharedLinkAccess(sharedLinkId: string, assetIds: Set<string>) {
     if (assetIds.size === 0) {
       return new Set<string>();
@@ -383,6 +410,25 @@ class MemoryAccess {
       .execute()
       .then((memories) => new Set(memories.map((memory) => memory.id)));
   }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkPartnerAccess(userId: string, memoryIds: Set<string>) {
+    if (memoryIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('memory')
+      .select('memory.id')
+      .innerJoin('partner', (join) =>
+        join.onRef('partner.sharedById', '=', 'memory.ownerId').on('partner.sharedWithId', '=', userId),
+      )
+      .where('memory.id', 'in', [...memoryIds])
+      .where('memory.deletedAt', 'is', null)
+      .execute()
+      .then((memories) => new Set(memories.map((memory) => memory.id)));
+  }
 }
 
 class PersonAccess {
@@ -400,6 +446,24 @@ class PersonAccess {
       .select('person.id')
       .where('person.id', 'in', [...personIds])
       .where('person.ownerId', '=', userId)
+      .execute()
+      .then((persons) => new Set(persons.map((person) => person.id)));
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkPartnerAccess(userId: string, personIds: Set<string>) {
+    if (personIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('person')
+      .select('person.id')
+      .innerJoin('partner', (join) =>
+        join.onRef('partner.sharedById', '=', 'person.ownerId').on('partner.sharedWithId', '=', userId),
+      )
+      .where('person.id', 'in', [...personIds])
       .execute()
       .then((persons) => new Set(persons.map((person) => person.id)));
   }

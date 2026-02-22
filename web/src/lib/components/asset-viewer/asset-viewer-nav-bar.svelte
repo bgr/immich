@@ -23,6 +23,7 @@
   import { Route } from '$lib/route';
   import { getGlobalActions } from '$lib/services/app.service';
   import { getAssetActions, handleReplaceAsset } from '$lib/services/asset.service';
+  import { isEditorPartner } from '$lib/stores/partner-access.store';
   import { user } from '$lib/stores/user.store';
   import { getSharedLink, withoutIcons } from '$lib/utils';
   import type { OnUndoDelete } from '$lib/utils/actions';
@@ -78,6 +79,7 @@
   }: Props = $props();
 
   const isOwner = $derived($user && asset.ownerId === $user?.id);
+  const canEdit = $derived(isOwner || isEditorPartner(asset.ownerId));
   const isLocked = $derived(asset.visibility === AssetVisibility.Locked);
   const smartSearchEnabled = $derived(featureFlagsManager.value.smartSearch);
 
@@ -162,7 +164,7 @@
     <ActionButton action={Favorite} />
     <ActionButton action={Unfavorite} />
 
-    {#if isOwner}
+    {#if canEdit}
       <RatingAction {asset} {onAction} />
     {/if}
 
@@ -214,8 +216,10 @@
         {/if}
 
         {#if !isLocked}
-          {#if isOwner}
+          {#if canEdit}
             <ArchiveAction {asset} {onAction} {preAction} />
+          {/if}
+          {#if isOwner}
             <MenuOption
               icon={mdiUpload}
               onClick={() => handleReplaceAsset(asset.id)}
