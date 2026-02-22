@@ -372,7 +372,7 @@
             />
           {:else}
             <p class="text-center w-full rounded-2xl mt-2 py-2 text-sm text-primary truncate">
-              {person.name || ''}
+              {person.name || $t('no_name')}
             </p>
           {/if}
         </div>
