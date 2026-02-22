@@ -391,7 +391,7 @@
                     heightStyle="3.375rem"
                   />
                   <div class="flex flex-col justify-center text-start px-4 text-primary">
-                    <p class="w-40 sm:w-72 font-medium truncate">{person.name || $t('add_a_name')}</p>
+                    <p class="w-40 sm:w-72 font-medium truncate">{person.name || $t(canEdit ? 'add_a_name' : 'no_name')}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                       {$t('assets_count', { values: { count: numberOfAssets } })}
                     </p>
