@@ -533,6 +533,8 @@ export type PersonWithFacesResponseDto = {
     isHidden: boolean;
     /** Person name */
     name: string;
+    /** Owner ID */
+    ownerId: string;
     /** Thumbnail path */
     thumbnailPath: string;
     /** Last update date */
@@ -1177,6 +1179,8 @@ export type PersonResponseDto = {
     isHidden: boolean;
     /** Person name */
     name: string;
+    /** Owner ID */
+    ownerId: string;
     /** Thumbnail path */
     thumbnailPath: string;
     /** Last update date */

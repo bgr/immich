@@ -34,7 +34,7 @@
   import { getPersonActions } from '$lib/services/person.service';
   import { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
   import { locale } from '$lib/stores/preferences.store';
-  import { preferences } from '$lib/stores/user.store';
+  import { preferences, user } from '$lib/stores/user.store';
   import { websocketEvents } from '$lib/stores/websocket';
   import { getPeopleThumbnailUrl } from '$lib/utils';
   import { handleError } from '$lib/utils/handle-error';
@@ -53,6 +53,7 @@
   import { DateTime } from 'luxon';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { fromStore } from 'svelte/store';
   import type { PageData } from './$types';
 
   interface Props {
@@ -62,9 +63,11 @@
   let { data }: Props = $props();
 
   let numberOfAssets = $derived(data.statistics.assets);
+  const currentUser = fromStore(user);
+  const canEdit = $derived(data.person.ownerId === currentUser.current?.id);
 
   let timelineManager = $state<TimelineManager>() as TimelineManager;
-  const options = $derived({ visibility: AssetVisibility.Timeline, personId: data.person.id });
+  const options = $derived({ visibility: AssetVisibility.Timeline, personId: data.person.id, userId: data.person.ownerId });
   const assetInteraction = new AssetInteraction();
 
   let viewMode: PersonPageViewMode = $state(PersonPageViewMode.VIEW_ASSETS);
@@ -364,7 +367,7 @@
           use:listNavigation={suggestionContainer}
         >
           <section class="flex w-64 sm:w-96 place-items-center border-black">
-            {#if isEditingName}
+            {#if canEdit && isEditingName}
               <EditNameInput
                 {person}
                 bind:suggestedPeople
@@ -378,8 +381,8 @@
                 <button
                   type="button"
                   class="flex items-center justify-center"
-                  title={$t('edit_name')}
-                  onclick={() => (isEditingName = true)}
+                  title={canEdit ? $t('edit_name') : ''}
+                  onclick={() => canEdit && (isEditingName = true)}
                 >
                   <ImageThumbnail
                     circle
@@ -502,10 +505,12 @@
     {#if viewMode === PersonPageViewMode.VIEW_ASSETS}
       <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(previousRoute)}>
         {#snippet trailing()}
-          <ContextMenuButton
-            items={[SelectFeaturePhoto, HidePerson, ShowPerson, SetDateOfBirth, Merge, Favorite, Unfavorite]}
-            aria-label={$t('open')}
-          />
+          {#if canEdit}
+            <ContextMenuButton
+              items={[SelectFeaturePhoto, HidePerson, ShowPerson, SetDateOfBirth, Merge, Favorite, Unfavorite]}
+              aria-label={$t('open')}
+            />
+          {/if}
         {/snippet}
       </ControlAppBar>
     {/if}
