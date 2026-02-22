@@ -363,7 +363,7 @@ networks:
   immich:
     labels:
       net.unraid.docker.managed: composeman
-      net.unraid.docker.icon: \"https://immich.app/img/immich-logo.svg\"
+      net.unraid.docker.icon: \"https://raw.githubusercontent.com/imagegenius/templates/main/unraid/img/immich.png\"
       net.unraid.docker.webui: \"http://[IP]:${HOST_PORT}/\"
       net.unraid.docker.shell: bash"
 }
