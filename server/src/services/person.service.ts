@@ -142,8 +142,13 @@ export class PersonService extends BaseService {
     const faces = await this.personRepository.getFaces(dto.id);
     const asset = await this.assetRepository.getById(dto.id, { edits: true, exifInfo: true });
     const assetDimensions = getDimensions(asset!.exifInfo!);
+    const partnerIds = await getMyPartnerIds({
+      userId: auth.user.id,
+      repository: this.partnerRepository,
+    });
+    const allowedOwnerIds = new Set(partnerIds);
 
-    return faces.map((face) => mapFaces(face, auth, asset!.edits!, assetDimensions));
+    return faces.map((face) => mapFaces(face, auth, asset!.edits!, assetDimensions, allowedOwnerIds));
   }
 
   async createNewFeaturePhoto(changeFeaturePhoto: string[]) {

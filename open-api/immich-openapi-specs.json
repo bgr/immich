@@ -19874,6 +19874,10 @@
               }
             ],
             "x-immich-state": "Stable"
+          },
+          "ownerId": {
+            "description": "Owner ID",
+            "type": "string"
           }
         },
         "required": [
@@ -19881,7 +19885,8 @@
           "id",
           "isHidden",
           "name",
-          "thumbnailPath"
+          "thumbnailPath",
+          "ownerId"
         ],
         "type": "object"
       },
@@ -20006,6 +20011,10 @@
               }
             ],
             "x-immich-state": "Stable"
+          },
+          "ownerId": {
+            "description": "Owner ID",
+            "type": "string"
           }
         },
         "required": [
@@ -20014,7 +20023,8 @@
           "id",
           "isHidden",
           "name",
-          "thumbnailPath"
+          "thumbnailPath",
+          "ownerId"
         ],
         "type": "object"
       },
@@ -24892,7 +24902,7 @@
             "type": "array"
           },
           "projectionType": {
-            "description": "Array of projection types for 360° content (e.g., \"EQUIRECTANGULAR\", \"CUBEFACE\", \"CYLINDRICAL\")",
+            "description": "Array of projection types for 360\u00b0 content (e.g., \"EQUIRECTANGULAR\", \"CUBEFACE\", \"CYLINDRICAL\")",
             "items": {
               "nullable": true,
               "type": "string"
