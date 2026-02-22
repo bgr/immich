@@ -60,10 +60,3 @@ echo "=== $DEPLOY_BRANCH rebuilt successfully ==="
 echo
 git log --oneline "$BASE_BRANCH..HEAD"
 echo
-
-# Return to original branch if it wasn't fork-deploy
-if [ "$current_branch" != "$DEPLOY_BRANCH" ]; then
-  git checkout "$current_branch"
-  echo
-  echo "Returned to $current_branch"
-fi
