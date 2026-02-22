@@ -7,7 +7,7 @@
   import type { ContextMenuPosition } from '$lib/utils/context-menu';
   import type { AlbumResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiShareVariantOutline } from '@mdi/js';
+  import { mdiEyeOffOutline, mdiShareVariantOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
 
   interface Props {
@@ -47,6 +47,9 @@
           ? $t('shared_by_you')
           : $t('shared_by_user', { values: { user: album.owner.name } })}
       />
+    {/if}
+    {#if !album.isOnTimeline}
+      <Icon icon={mdiEyeOffOutline} size="16" class="inline ms-1 opacity-70" title={$t('hidden_from_timeline')} />
     {/if}
   </td>
   <td class="text-md text-ellipsis text-center sm:w-2/12 md:w-2/12 xl:w-[15%] 2xl:w-[12%]">
