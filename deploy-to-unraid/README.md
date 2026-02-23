@@ -29,7 +29,6 @@ Volume mounts (same as the original ImageGenius container):
 | `/photos` | Main media library |
 | `/photos/thumbs` | Thumbnails (can be on a separate share) |
 | `/import` | External library import |
-| `/libraries` | Libraries (Docker volume) |
 
 ## Prerequisites
 
@@ -68,7 +67,7 @@ confirmations (useful when run by automation or Claude Code).
 1. Reads config from the running ImageGenius container and generates `.env.<name>`
 2. Clones the ImageGenius docker repo (for the s6-overlay service scripts)
 3. Backs up the database on Unraid
-4. Creates a Docker Compose Manager project on Unraid
+4. Previews the Docker Compose Manager project that will be created on the first push
 5. Stops the old container
 
 Then tells you to run `build` and `push`.
@@ -80,9 +79,19 @@ to build once, then push to as many machines as you want.
 
 ## What push does
 
-1. Saves the image to a compressed archive (reused across hosts)
-2. Transfers it to the Unraid machine via SCP
-3. Loads the image and restarts the container
+1. Pre-flight checks: verifies disk space on each host and offers to prune orphaned
+   Docker images (old versions left behind by previous deploys) to free space
+2. Saves the image to a compressed archive (reused across hosts)
+3. Transfers it to the Unraid machine via SCP and loads it
+4. Creates or updates the Docker Compose Manager project on the remote host
+5. Starts the container and verifies it's running
+6. Prunes old images now that the new container is confirmed running
+
+## Other scripts
+
+**`recreate-merge-branch.sh`** — Rebuilds the `fork-deploy` branch by resetting it to
+`main` and merging all feature branches in order. Used to prepare a combined branch for
+building.
 
 ## Rollback
 
