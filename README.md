@@ -2,10 +2,10 @@
 
 Quick summary of the changes done on this fork:
 
-* enhanced Partner Sharing
-* hide albums from timeline
-* fork info in version
-* Unraid deploy scripts
+* [enhanced Partner Sharing](#branch-partner-sharing-improvements)
+* [hide albums from timeline](#branch-hide-album-from-timeline)
+* [fork info in version](#branch-version-show-fork)
+* [Unraid deploy scripts](#branch-unraid-switch)
 
 more info below.
 
@@ -13,13 +13,14 @@ more info below.
 
 I'll be rebasing and force-pushing. I aim to have each of the changes on a separate branch, each branched out
 from `main`, at least until I start encountering conflicts. For my purposes I'll be merging all of them into
-'release' branches that I'll build the container from and upload it to my Unraid machine - I'll keep those
-branches around intact, if anything goes wrong I'll make new branches with new fixes merged in. There aren't
-any of those branches yet.
+'release' branches that I'll build the container from and upload it to my Unraid machine - I'll push those as
+tags and they'll be kept intact, if anything goes wrong I'll make new tags with new fixes merged in.
+
+I'm currently using a build from tag [`fork-merge-2026-02-22`](https://github.com/bgr/immich/tree/fork-merge-2026-02-22) and it's working fine so far.
 
 ## Feature branches
 
-### Branch `partner-sharing-improvements`
+### Branch [`partner-sharing-improvements`](https://github.com/bgr/immich/tree/partner-sharing-improvements)
 
 Aims to make the UI experience for partners indistinguishable from owner's on the web. Partners will see
 image metadata, the geotags on the map, the recognized faces. The photos will appear in memories and in
@@ -65,7 +66,7 @@ I didn't care about uploading through the web interface at all.
 
 The OpenAPI spec and TypeScript SDK are regenerated and in sync.
 
-### Branch `hide-album-from-timeline`
+### Branch [`hide-album-from-timeline`](https://github.com/bgr/immich/tree/hide-album-from-timeline)
 
 Note: I didn't get to test this out propery yet.
 
@@ -74,17 +75,22 @@ accessible — only its assets stop appearing in the timeline view. A closed-eye
 cards (cover view) and album rows (list view) when an album is hidden. The toggle is available in the album
 context menu on the albums list page and as an eye icon button in the album detail page toolbar.
 
-### Branch `version-show-fork`
+### Branch [`version-show-fork`](https://github.com/bgr/immich/tree/version-show-fork)
 
 Adds `-fork` suffix to the version number in the sidebar and a "Fork" line in the About modal linking to this
 repo. Makes it clear to the user that they're running a fork.
 
-### Branch `unraid-switch`
+### Branch [`unraid-switch`](https://github.com/bgr/immich/tree/unraid-switch)
 
-Scripts and Dockerfile patches for deploying this fork to an Unraid machine that already had the ImageGenius
-Immich set up and running. Builds a custom Docker image from local source, transfers it via SCP, and manages
-it through Docker Compose Manager. Includes a layer-splitting optimization so code-only changes skip the slow
-dependency installation step.
+A deploy script for building the fork and uploading it to Unraid machines that previously ran
+[ImageGenius Immich](https://ghcr.io/imagegenius/immich). It discovers the existing container's config,
+builds a drop-in replacement image from the fork's source, transfers it to Unraid via SCP, and manages
+it through Docker Compose Manager. The original container is stopped and left intact.
+
+The build step patches the ImageGenius Dockerfile to `COPY` local source instead of downloading from
+GitHub, and splits the monolithic `RUN` into two Docker layers — one for dependency installation (apt,
+Node.js, Python, pnpm) and one for compiling the code (server, web, CLI, ML, plugins). This way
+code-only changes reuse the cached dependency layer and skip the slow install step.
 
 ---
 
