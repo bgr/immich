@@ -173,6 +173,41 @@ do_build() {
     exit 1
   fi
 
+  # Remind the user to keep the ImageGenius repo up to date.
+  # FETCH_HEAD mtime reflects the last clone or pull.
+  local last_pull_msg=""
+  local fetch_head="$IG_DOCKER_DIR/.git/FETCH_HEAD"
+  if [[ -f "$fetch_head" ]]; then
+    local last_fetch_epoch
+    last_fetch_epoch=$(stat -c %Y "$fetch_head" 2>/dev/null || stat -f %m "$fetch_head" 2>/dev/null || echo "")
+    if [[ -n "$last_fetch_epoch" ]]; then
+      local now_epoch
+      now_epoch=$(date +%s)
+      local days_ago=$(( (now_epoch - last_fetch_epoch) / 86400 ))
+      if [[ "$days_ago" -eq 0 ]]; then
+        last_pull_msg="today"
+      elif [[ "$days_ago" -eq 1 ]]; then
+        last_pull_msg="yesterday"
+      else
+        last_pull_msg="$days_ago days ago"
+      fi
+    fi
+  fi
+
+  info "ImageGenius repo was last fetched $last_pull_msg."
+  info "If you've rebased the fork branches onto a newer Immich 'main' you"
+  info "might want to update ImageGenius repo to match that."
+  info ""
+
+  if $AUTO_YES; then
+    info "Keeping current version (--yes)."
+  else
+    read -rp "  Pull latest ImageGenius repo or keep current? [p/K] " answer
+    if [[ "$answer" =~ ^[Pp]$ ]]; then
+      git -C "$IG_DOCKER_DIR" pull
+    fi
+  fi
+
   info "Preparing build context..."
 
   # Clean and create the build directory
@@ -650,8 +685,7 @@ EOF
   info "(the init scripts and process supervisors that run inside the container)."
 
   if [[ -d "$IG_DOCKER_DIR/.git" ]]; then
-    info "Already cloned at $IG_DOCKER_DIR — pulling latest..."
-    git -C "$IG_DOCKER_DIR" pull --quiet
+    info "Already cloned at $IG_DOCKER_DIR — skipping (pull manually to update)."
   else
     info "Will clone: https://github.com/imagegenius/docker-immich.git"
     info "       Into: $IG_DOCKER_DIR"

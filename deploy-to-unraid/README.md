@@ -74,8 +74,9 @@ Then tells you to run `build` and `push`.
 
 ## What build does
 
-Builds the Docker image locally. This is independent of any host — you only need
-to build once, then push to as many machines as you want.
+Builds the Docker image locally. Before building, it shows when the ImageGenius repo was
+last fetched and offers to pull the latest version. This is independent of any host — you
+only need to build once, then push to as many machines as you want.
 
 ## What push does
 
@@ -105,6 +106,38 @@ docker start immich    # the original ImageGenius container
 
 The migration added by our fork (AddPartnerAccessLevel) only adds a column with a default
 value. Stock Immich ignores it, so no migration rollback is needed.
+
+## ImageGenius version compatibility
+
+The build uses two things from ImageGenius: their
+[docker-immich](https://github.com/imagegenius/docker-immich) repo (Dockerfile and s6
+service scripts) and their base image (`ghcr.io/imagegenius/baseimage-immich:latest`).
+Neither is pinned to a specific version.
+
+This is intentional. ImageGenius doesn't tag their commits by Immich version, so there's
+no easy way to look up "which ImageGenius commit matches Immich v2.x.y". Pinning would
+create a maintenance burden with no clear way to update the pin when rebasing our branches
+onto a newer Immich `main`.
+
+Instead, the script relies on two things:
+
+1. **`patch-dockerfile.py` fails loudly if the Dockerfile format changed.** It looks for
+   specific string patterns and exits with a clear error if they're missing, so a
+   format mismatch won't silently produce a broken image.
+
+2. **The ImageGenius repo is cloned once and not auto-updated.** Running `init` on a new
+   host clones the repo, but running `init` again on an already-configured host skips the
+   clone. This means the ImageGenius code stays at whatever version you last pulled, and
+   won't drift out of sync with your fork behind your back.
+
+**When rebasing onto a newer Immich `main`**, update the ImageGenius repo to match:
+
+```bash
+git -C deploy-to-unraid/imagegenius-docker pull
+```
+
+Then rebuild. If the Dockerfile format changed, `patch-dockerfile.py` will tell you what
+broke.
 
 ## Troubleshooting
 
