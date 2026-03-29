@@ -101,8 +101,8 @@ const authUserFactory = (authUser: Partial<AuthUser> = {}) => {
 };
 
 const partnerFactory = (partner: Partial<Partner> = {}) => {
-  const sharedBy = userAdminFactory(partner.sharedBy || {});
-  const sharedWith = userAdminFactory(partner.sharedWith || {});
+  const sharedBy = userAdminFactory((partner.sharedBy || {}) as Partial<UserAdmin>);
+  const sharedWith = userAdminFactory((partner.sharedWith || {}) as Partial<UserAdmin>);
 
   return {
     sharedById: sharedBy.id,
@@ -116,7 +116,7 @@ const partnerFactory = (partner: Partial<Partner> = {}) => {
     inTimeline: true,
     accessLevel: 'viewer',
     ...partner,
-  };
+  } as Partner;
 };
 
 const queueStatisticsFactory = (dto?: Partial<QueueStatisticsDto>) => ({

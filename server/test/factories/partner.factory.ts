@@ -21,6 +21,7 @@ export class PartnerFactory {
     return new PartnerFactory({
       createdAt: newDate(),
       createId: newUuidV7(),
+      accessLevel: 'viewer',
       inTimeline: true,
       sharedById,
       sharedWithId,

@@ -132,7 +132,7 @@ describe(MemoryService.name, () => {
       vi.setSystemTime(now.toJSDate());
       await sut.onMemoriesCreate();
 
-      const memories = await memoryRepo.search(user.id, {});
+      const memories = await memoryRepo.search([user.id], {});
       expect(memories.length).toBe(1);
       expect(memories[0]).toEqual(
         expect.objectContaining({
@@ -172,7 +172,7 @@ describe(MemoryService.name, () => {
       vi.setSystemTime(now.toJSDate());
       await sut.onMemoriesCreate();
 
-      const memories = await memoryRepo.search(user.id, {});
+      const memories = await memoryRepo.search([user.id], {});
       expect(memories.length).toBe(1);
       expect(memories[0]).toEqual(
         expect.objectContaining({
@@ -227,12 +227,12 @@ describe(MemoryService.name, () => {
       vi.setSystemTime(now.toJSDate());
       await sut.onMemoriesCreate();
 
-      const memories = await memoryRepo.search(user.id, {});
+      const memories = await memoryRepo.search([user.id], {});
       expect(memories.length).toBe(1);
 
       await sut.onMemoriesCreate();
 
-      const memoriesAfter = await memoryRepo.search(user.id, {});
+      const memoriesAfter = await memoryRepo.search([user.id], {});
       expect(memoriesAfter.length).toBe(1);
     });
   });

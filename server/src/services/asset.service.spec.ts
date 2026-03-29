@@ -167,7 +167,7 @@ describe(AssetService.name, () => {
         .build();
       // Grant access via partner check (not owner)
       mocks.access.asset.checkPartnerAccess.mockResolvedValue(new Set([asset.id]));
-      mocks.asset.getById.mockResolvedValue(asset);
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
 
       const result = await sut.get(authStub.admin, asset.id);
 
@@ -181,7 +181,7 @@ describe(AssetService.name, () => {
         .build();
       // Grant access via album only — not partner
       mocks.access.asset.checkAlbumAccess.mockResolvedValue(new Set([asset.id]));
-      mocks.asset.getById.mockResolvedValue(asset);
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
 
       const result = await sut.get(authStub.admin, asset.id);
 
@@ -193,7 +193,7 @@ describe(AssetService.name, () => {
         .face({}, (builder) => builder.person({ name: 'Test Person' }))
         .build();
       mocks.access.asset.checkSharedLinkAccess.mockResolvedValue(new Set([asset.id]));
-      mocks.asset.getById.mockResolvedValue(asset);
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
 
       const result = await sut.get(authStub.adminSharedLink, asset.id);
 
@@ -256,8 +256,8 @@ describe(AssetService.name, () => {
     it('should allow editor partner to update the asset', async () => {
       const asset = AssetFactory.create();
       mocks.access.asset.checkPartnerEditorAccess.mockResolvedValue(new Set([asset.id]));
-      mocks.asset.getById.mockResolvedValue(asset);
-      mocks.asset.update.mockResolvedValue(asset);
+      mocks.asset.getById.mockResolvedValue(getForAsset(asset));
+      mocks.asset.update.mockResolvedValue(getForAsset(asset));
 
       await sut.update(authStub.admin, asset.id, { isFavorite: true });
 
