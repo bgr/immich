@@ -246,7 +246,20 @@ do_build() {
   echo ""
   confirm || exit 1
 
-  docker build -t "$IMAGE_NAME:latest" "$BUILD_DIR"
+  # Load GITHUB_TOKEN from .env if not already set in the environment
+  local env_file="$SCRIPT_DIR/.env"
+  if [[ -z "${GITHUB_TOKEN:-}" && -f "$env_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$env_file"
+  fi
+
+  local build_args=()
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    build_args+=(--build-arg "GITHUB_TOKEN=$GITHUB_TOKEN")
+    info "Using GITHUB_TOKEN for GitHub API rate limits."
+  fi
+
+  docker build --pull "${build_args[@]}" -t "$IMAGE_NAME:latest" "$BUILD_DIR"
 
   echo ""
   ok "Image built: $IMAGE_NAME:latest"

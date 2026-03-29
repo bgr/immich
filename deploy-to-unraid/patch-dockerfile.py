@@ -3,7 +3,10 @@
 
 Changes made:
   1. Replaces the GitHub tarball download with COPY of local source
-  2. Splits the monolithic RUN into two layers:
+  2. Pins Node.js version if the .nvmrc version isn't on NodeSource yet
+  3. Uses bundled libvips instead of the base image's system libvips
+     (avoids pkg-config conflicts from the base image's resolute-repo libs)
+  4. Splits the monolithic RUN into two layers:
      - Layer 1 (cached): apt repos, apt install, pnpm setup — only reruns
        if the base image or Node version changes
      - Layer 2 (rebuilds on code change): plugins, server, web, CLI, ML builds
@@ -50,28 +53,54 @@ def patch(content: str) -> str:
     content = result
 
     # -----------------------------------------------------------------------
+    # 2b. Pin Node.js to latest available NodeSource version.
+    #     The .nvmrc may specify a patch version that NodeSource doesn't have
+    #     yet (e.g. 24.13.1 when only 24.13.0 is published).
+    # -----------------------------------------------------------------------
+    content = content.replace(
+        '  if [ -z "${NODEJS_VERSION}" ]; then \\\n'
+        '    NODEJS_VERSION="$(cat /tmp/immich/server/.nvmrc)" && \\\n'
+        '    echo "**** detected node version ${NODEJS_VERSION} ****"; \\\n'
+        '  fi && \\\n',
+        '  NODEJS_VERSION="24.13.0" && \\\n'
+        '  echo "**** using pinned node version ${NODEJS_VERSION} ****" && \\\n',
+    )
+
+    # -----------------------------------------------------------------------
+    # 2c. Use bundled libvips instead of the system one.
+    #     The base image compiles libvips from source against libraries from
+    #     Ubuntu "resolute" (a newer release), then removes the resolute repo.
+    #     This leaves the system vips linked against libs whose -dev packages
+    #     can't be installed, so sharp can't compile against it.
+    #     Fix: use sharp's bundled libvips for everything.
+    # -----------------------------------------------------------------------
+    content = content.replace(
+        'SHARP_FORCE_GLOBAL_LIBVIPS="true" \\\n',
+        'SHARP_FORCE_GLOBAL_LIBVIPS="false" \\\n',
+    )
+    content = content.replace(
+        'SHARP_FORCE_GLOBAL_LIBVIPS=true pnpm \\\n',
+        'SHARP_IGNORE_GLOBAL_LIBVIPS=true pnpm \\\n',
+    )
+    # Drop --no-optional so the bundled sharp native bindings are kept
+    content = content.replace(
+        '    --no-optional \\\n'
+        '    --force \\\n'
+        '    deploy /app/immich/server',
+        '    --force \\\n'
+        '    deploy /app/immich/server',
+    )
+
+    # -----------------------------------------------------------------------
+    # 2d. Remove librsvg2-dev from the install list.
+    #     It was only needed for compiling sharp against the system libvips.
+    #     With bundled vips (2c above), it's no longer needed, and it causes
+    #     an apt conflict (pulls libwebp-dev 1.3.x vs held libwebp7 1.5.x).
+    # -----------------------------------------------------------------------
+    content = content.replace('    librsvg2-dev \\\n', '')
+
+    # -----------------------------------------------------------------------
     # 3. Split the monolithic RUN into two: deps install vs code build.
-    #
-    #    We split right before "**** setup plugins (mise) ****" because
-    #    everything before that is dependency installation (apt, node, pnpm)
-    #    which only changes when the base image or Node version changes.
-    #    Everything from plugins onward is building our code.
-    #
-    #    Original (single RUN):
-    #      ... apt-get install ... && \
-    #      echo "**** setup pnpm ****" && \
-    #      npm install --global corepack@latest && \
-    #      corepack enable pnpm && \
-    #      echo "**** setup plugins (mise) ****" && \
-    #      ...
-    #
-    #    After split:
-    #      ... corepack enable pnpm
-    #      # --- end of deps layer ---
-    #
-    #      RUN \
-    #        echo "**** setup plugins (mise) ****" && \
-    #      ...
     # -----------------------------------------------------------------------
 
     # Find the split point: the line with "setup plugins (mise)"
@@ -81,9 +110,6 @@ def patch(content: str) -> str:
         print("The ImageGenius Dockerfile format may have changed.", file=sys.stderr)
         sys.exit(1)
 
-    # The line before the split marker ends with "&& \" — we need to remove
-    # that continuation to end the first RUN, then start a new RUN.
-    # The line before is: "  corepack enable pnpm && \"
     old_split = (
         '  corepack enable pnpm && \\\n'
         '  echo "**** setup plugins (mise) ****" && \\\n'
@@ -92,6 +118,7 @@ def patch(content: str) -> str:
         '  corepack enable pnpm\n'
         '\n'
         '# --- Code build layer (rebuilds on source changes) ---\n'
+        'ARG GITHUB_TOKEN\n'
         'RUN \\\n'
         '  echo "**** setup plugins (mise) ****" && \\\n'
     )
@@ -103,20 +130,14 @@ def patch(content: str) -> str:
 
     # -----------------------------------------------------------------------
     # 4. Move COPY immich-source/ to between the two RUN layers.
-    #
-    #    The COPY must come after deps install (so it doesn't invalidate
-    #    that cache) and before the build RUN (which needs the source).
     # -----------------------------------------------------------------------
 
-    # Replace the full COPY with just .nvmrc (needed by deps layer for Node
-    # version detection). The full source COPY goes before the build layer.
     content = content.replace(
         'COPY immich-source/ /tmp/immich/\n\n',
         'COPY immich-source/server/.nvmrc /tmp/immich/server/.nvmrc\n\n',
         1
     )
 
-    # Insert the full source COPY between the two RUN layers
     content = content.replace(
         '# --- Code build layer (rebuilds on source changes) ---\n',
         'COPY immich-source/ /tmp/immich/\n'

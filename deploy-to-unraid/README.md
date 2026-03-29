@@ -52,6 +52,17 @@ Volume mounts (same as the original ImageGenius container):
 ./deploy.sh build
 ```
 
+The build uses `mise` to download plugin tools from GitHub. If you hit rate limits
+(403 errors during `mise install`), add a `GITHUB_TOKEN` to `deploy-to-unraid/.env`:
+
+```bash
+echo 'GITHUB_TOKEN=ghp_...' > deploy-to-unraid/.env
+```
+
+The token only needs to exist — no scopes/permissions are required (create a classic
+PAT with all checkboxes unchecked). It just raises the GitHub API rate limit from 60
+to 5,000 requests/hour. The `.env` file is gitignored.
+
 **Push** the image to Unraid and restart the container:
 
 ```bash
