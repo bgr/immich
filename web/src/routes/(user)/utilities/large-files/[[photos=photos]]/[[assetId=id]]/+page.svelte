@@ -3,11 +3,14 @@
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import LargeAssetData from '$lib/components/utilities-page/large-assets/large-asset-data.svelte';
   import Portal from '$lib/elements/Portal.svelte';
+  import { FilmstripManager } from '$lib/components/asset-viewer/filmstrip-manager.svelte';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { handlePromiseError } from '$lib/utils';
   import { getNextAsset, getPreviousAsset } from '$lib/utils/asset-utils';
   import { navigate } from '$lib/utils/navigation';
+  import { toTimelineAsset } from '$lib/utils/timeline-util';
   import type { AssetResponseDto } from '@immich/sdk';
+  import { untrack } from 'svelte';
   import { t } from 'svelte-i18n';
   import type { PageData } from './$types';
 
@@ -52,6 +55,18 @@
     nextAsset: getNextAsset(assets, $viewingAsset),
     previousAsset: getPreviousAsset(assets, $viewingAsset),
   });
+
+  const filmstripManager = FilmstripManager.fromArray([]);
+
+  $effect(() => {
+    filmstripManager.updateAssets(assets.map((a) => toTimelineAsset(a)));
+  });
+
+  $effect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    $viewingAsset;
+    untrack(() => filmstripManager.loadAround($viewingAsset.id));
+  });
 </script>
 
 <UserPageLayout title={data.meta.title} scrollbar={true}>
@@ -74,6 +89,7 @@
       <AssetViewer
         cursor={assetCursor}
         showNavigation={assets.length > 1}
+        {filmstripManager}
         {onRandom}
         {onAction}
         onClose={() => {

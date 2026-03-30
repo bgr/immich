@@ -27,9 +27,11 @@
   import { getJustifiedLayoutFromAssets } from '$lib/utils/layout-utils';
   import { navigate } from '$lib/utils/navigation';
   import { isTimelineAsset, toTimelineAsset } from '$lib/utils/timeline-util';
+  import { FilmstripManager } from '$lib/components/asset-viewer/filmstrip-manager.svelte';
   import { AssetVisibility, type AssetResponseDto } from '@immich/sdk';
   import { modalManager } from '@immich/ui';
   import { debounce } from 'lodash-es';
+  import { untrack } from 'svelte';
   import { t } from 'svelte-i18n';
 
   type Props = {
@@ -356,6 +358,18 @@
     nextAsset: getNextAsset(navigationAssets, $viewingAsset),
     previousAsset: getPreviousAsset(navigationAssets, $viewingAsset),
   });
+
+  const filmstripManager = FilmstripManager.fromArray([]);
+
+  $effect(() => {
+    filmstripManager.updateAssets(navigationAssets.map((a) => (isTimelineAsset(a) ? a : toTimelineAsset(a))));
+  });
+
+  $effect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    $viewingAsset;
+    untrack(() => filmstripManager.loadAround($viewingAsset.id));
+  });
 </script>
 
 <svelte:document
@@ -413,6 +427,7 @@
     {#await import('$lib/components/asset-viewer/asset-viewer.svelte') then { default: AssetViewer }}
       <AssetViewer
         cursor={assetCursor}
+        {filmstripManager}
         onAction={handleAction}
         onRandom={handleRandom}
         onAssetChange={updateCurrentAsset}

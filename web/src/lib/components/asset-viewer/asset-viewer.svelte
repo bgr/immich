@@ -23,6 +23,7 @@
   import { getSharedLink, handlePromiseError } from '$lib/utils';
   import type { OnUndoDelete } from '$lib/utils/actions';
   import { navigateToAsset } from '$lib/utils/asset-utils';
+  import { navigate } from '$lib/utils/navigation';
   import { handleError } from '$lib/utils/handle-error';
   import { InvocationTracker } from '$lib/utils/invocationTracker';
   import { SlideshowHistory } from '$lib/utils/slideshow-history';
@@ -42,6 +43,8 @@
   import { t } from 'svelte-i18n';
   import { fly } from 'svelte/transition';
   import Thumbnail from '../assets/thumbnail/thumbnail.svelte';
+  import type { FilmstripManager } from './filmstrip-manager.svelte';
+  import Filmstrip from './filmstrip.svelte';
   import ActivityStatus from './activity-status.svelte';
   import ActivityViewer from './activity-viewer.svelte';
   import DetailPanel from './detail-panel.svelte';
@@ -72,6 +75,7 @@
     onUndoDelete?: OnUndoDelete;
     onClose?: (asset: AssetResponseDto) => void;
     onRandom?: () => Promise<{ id: string } | undefined>;
+    filmstripManager?: FilmstripManager;
   }
 
   let {
@@ -87,6 +91,7 @@
     onUndoDelete,
     onClose,
     onRandom,
+    filmstripManager,
   }: Props = $props();
 
   const { setAssetId } = assetViewingStore;
@@ -628,6 +633,15 @@
         {/each}
       </div>
     </div>
+  {/if}
+
+  {#if filmstripManager && $slideshowState === SlideshowState.None && !assetViewerManager.isShowEditor}
+    <Filmstrip
+      {filmstripManager}
+      currentAssetId={asset.id}
+      hasStack={!!(stack && withStacked)}
+      onNavigate={(assetId) => handlePromiseError(navigate({ targetRoute: 'current', assetId }))}
+    />
   {/if}
 
   {#if isShared && album && assetViewerManager.isShowActivityPanel && $user}
