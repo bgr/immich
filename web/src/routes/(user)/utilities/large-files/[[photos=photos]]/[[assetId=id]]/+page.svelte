@@ -64,9 +64,10 @@
   });
 
   $effect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    $viewingAsset;
-    untrack(() => filmstripManager.loadAround($viewingAsset.id));
+    const asset = $viewingAsset;
+    if (asset) {
+      untrack(() => filmstripManager.loadAround(asset.id));
+    }
   });
 </script>
 
