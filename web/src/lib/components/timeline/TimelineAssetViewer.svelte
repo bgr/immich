@@ -14,6 +14,7 @@
   import { handleErrorAsync } from '$lib/utils/handle-error';
   import { navigate } from '$lib/utils/navigation';
   import { toTimelineAsset } from '$lib/utils/timeline-util';
+  import { FilmstripManager } from '$lib/components/asset-viewer/filmstrip-manager.svelte';
   import { type AlbumResponseDto, type AssetResponseDto, type PersonResponseDto, getAssetInfo } from '@immich/sdk';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { t } from 'svelte-i18n';
@@ -85,6 +86,14 @@
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     $viewingAsset;
     untrack(() => handlePromiseError(loadCloseAssets($viewingAsset)));
+  });
+
+  const filmstripManager = FilmstripManager.fromTimeline(timelineManager);
+
+  $effect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    $viewingAsset;
+    untrack(() => handlePromiseError(filmstripManager.loadAround($viewingAsset.id)));
   });
 
   const handleRandom = async () => {
@@ -222,6 +231,7 @@
     {isShared}
     {album}
     {person}
+    {filmstripManager}
     onAssetChange={(asset) => {
       timelineManager?.upsertAssets([toTimelineAsset(asset)]);
     }}
