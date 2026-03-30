@@ -34,6 +34,7 @@ export class AlbumFactory {
       deletedAt: null,
       description: 'Album description',
       isActivityEnabled: false,
+      isOnTimeline: true,
       order: AssetOrder.Desc,
       updatedAt: newDate(),
       updateId: newUuidV7(),

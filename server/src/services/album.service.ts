@@ -153,6 +153,7 @@ export class AlbumService extends BaseService {
       description: dto.description,
       albumThumbnailAssetId: dto.albumThumbnailAssetId,
       isActivityEnabled: dto.isActivityEnabled,
+      isOnTimeline: dto.isOnTimeline,
       order: dto.order,
     });
 

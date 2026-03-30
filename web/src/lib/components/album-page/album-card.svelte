@@ -4,8 +4,8 @@
   import { getContextMenuPositionFromEvent, type ContextMenuPosition } from '$lib/utils/context-menu';
   import { getShortDateRange } from '$lib/utils/date-time';
   import type { AlbumResponseDto } from '@immich/sdk';
-  import { IconButton } from '@immich/ui';
-  import { mdiDotsVertical } from '@mdi/js';
+  import { Icon, IconButton } from '@immich/ui';
+  import { mdiDotsVertical, mdiEyeOffOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
 
   interface Props {
@@ -73,7 +73,7 @@
       </p>
     {/if}
 
-    <span class="flex gap-2 text-sm dark:text-immich-dark-fg" data-testid="album-details">
+    <span class="flex gap-2 text-sm dark:text-immich-dark-fg items-center" data-testid="album-details">
       {#if showItemCount}
         <p>
           {$t('items_count', { values: { count: album.assetCount } })}
@@ -94,6 +94,10 @@
         {/if}
       {:else if album.shared}
         <p>{$t('shared')}</p>
+      {/if}
+
+      {#if !album.isOnTimeline}
+        <Icon icon={mdiEyeOffOutline} size="16" class="ms-auto opacity-70" title={$t('hidden_from_timeline')} />
       {/if}
     </span>
   </div>
