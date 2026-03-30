@@ -16,7 +16,7 @@ from `main`, at least until I start encountering conflicts. For my purposes I'll
 'release' branches that I'll build the container from and upload it to my Unraid machine - I'll push those as
 tags and they'll be kept intact, if anything goes wrong I'll make new tags with new fixes merged in.
 
-I'm currently using a build from tag [`fork-merge-2026-02-22`](https://github.com/bgr/immich/tree/fork-merge-2026-02-22) and it's working fine so far.
+I'm currently using a build from tag [`fork-v2.5.6-2026-02-22`](https://github.com/bgr/immich/tree/fork-v2.5.6-2026-02-22) and it's working fine so far.
 
 ## Feature branches
 
