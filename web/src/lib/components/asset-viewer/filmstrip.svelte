@@ -146,16 +146,18 @@
     }
   }
 
-  // Scroll to center the current asset when it changes or when filmstrip loads
+  // Scroll to center the current asset when it changes, when filmstrip loads,
+  // or when the scroll container is (re)created (e.g. after hide/show cycle)
   $effect(() => {
     void currentAssetId;
+    void scrollContainer;
     const idx = filmstripManager.currentIndex;
     untrack(() => {
       if (!scrollContainer || idx < 0 || idx >= assetPositions.length) return;
 
       const assetCenter = assetPositions[idx] + assetWidths[idx] / 2;
       const scrollTarget = assetCenter - scrollContainer.clientWidth / 2;
-      scrollContainer.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+      scrollContainer.scrollTo({ left: scrollTarget, behavior: 'instant' });
     });
   });
 
@@ -174,10 +176,11 @@
     }
   }
 
-  // Initialize containerWidth on mount
+  // Sync state when scroll container is (re)created
   $effect(() => {
     if (scrollContainer) {
       containerWidth = scrollContainer.clientWidth;
+      scrollLeft = scrollContainer.scrollLeft;
     }
   });
 </script>
