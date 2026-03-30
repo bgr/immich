@@ -59,7 +59,8 @@
   const filmstripManager = FilmstripManager.fromArray([]);
 
   $effect(() => {
-    filmstripManager.updateAssets(assets.map((a) => toTimelineAsset(a)));
+    const mapped = assets.map((a) => toTimelineAsset(a));
+    untrack(() => filmstripManager.updateAssets(mapped));
   });
 
   $effect(() => {

@@ -362,7 +362,8 @@
   const filmstripManager = FilmstripManager.fromArray([]);
 
   $effect(() => {
-    filmstripManager.updateAssets(navigationAssets.map((a) => (isTimelineAsset(a) ? a : toTimelineAsset(a))));
+    const mapped = navigationAssets.map((a) => (isTimelineAsset(a) ? a : toTimelineAsset(a)));
+    untrack(() => filmstripManager.updateAssets(mapped));
   });
 
   $effect(() => {
