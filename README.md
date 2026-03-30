@@ -6,6 +6,7 @@ Quick summary of the changes done on this fork:
 * [hide albums from timeline](#branch-hide-album-from-timeline)
 * [fork info in version](#branch-version-show-fork)
 * [Unraid deploy scripts](#branch-unraid-switch)
+* [filmstrip navigation in asset viewer](#branch-filmstrip-navigation)
 
 more info below.
 
@@ -91,6 +92,15 @@ The build step patches the ImageGenius Dockerfile to `COPY` local source instead
 GitHub, and splits the monolithic `RUN` into two Docker layers — one for dependency installation (apt,
 Node.js, Python, pnpm) and one for compiling the code (server, web, CLI, ML, plugins). This way
 code-only changes reuse the cached dependency layer and skip the slow install step.
+
+### Branch [`filmstrip-navigation`](https://github.com/bgr/immich/tree/filmstrip-navigation)
+
+Adds a filmstrip/thumbnail strip at the bottom of the asset viewer (web) for quick visual navigation
+between neighboring assets. The filmstrip auto-hides and appears when the mouse approaches the bottom of
+the screen, with a pin button to keep it visible. Thumbnails have a fixed height with width varying by
+aspect ratio, and the current asset is highlighted. Videos show the same duration indicators as the main
+timeline. The filmstrip contents match the viewing context — timeline photos when browsing the timeline,
+search results when viewing search results, album contents when viewing an album, etc.
 
 ---
 
