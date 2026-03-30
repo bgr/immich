@@ -15,6 +15,7 @@ FEATURE_BRANCHES=(
   unraid-switch
   partner-sharing-improvements
   hide-album-from-timeline
+  filmstrip-navigation
 )
 
 cd "$(git rev-parse --show-toplevel)"
