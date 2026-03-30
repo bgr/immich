@@ -118,8 +118,8 @@ def patch(content: str) -> str:
         '  corepack enable pnpm\n'
         '\n'
         '# --- Code build layer (rebuilds on source changes) ---\n'
-        'ARG GITHUB_TOKEN\n'
-        'RUN \\\n'
+        'RUN --mount=type=secret,id=github_token \\\n'
+        '  if [ -f /run/secrets/github_token ]; then export GITHUB_TOKEN=$(cat /run/secrets/github_token); fi && \\\n'
         '  echo "**** setup plugins (mise) ****" && \\\n'
     )
     if old_split not in content:
@@ -171,7 +171,7 @@ def main():
     if 'github.com/immich-app/immich/archive' in content:
         print("ERROR: GitHub download URL still present after patching.", file=sys.stderr)
         sys.exit(1)
-    if content.count('RUN \\') < 2:
+    if content.count('\nRUN ') < 2:
         print("ERROR: Expected at least 2 RUN instructions after splitting.", file=sys.stderr)
         sys.exit(1)
 

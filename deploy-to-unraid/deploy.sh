@@ -226,6 +226,8 @@ do_build() {
   mkdir -p "$BUILD_DIR/immich-source"
   tar cf - \
     --exclude='node_modules' \
+    --exclude='dist' \
+    --exclude='build' \
     --exclude='.git' \
     --exclude='__pycache__' \
     --exclude='.venv' \
@@ -255,7 +257,7 @@ do_build() {
 
   local build_args=()
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    build_args+=(--build-arg "GITHUB_TOKEN=$GITHUB_TOKEN")
+    build_args+=(--secret "id=github_token,env=GITHUB_TOKEN")
     info "Using GITHUB_TOKEN for GitHub API rate limits."
   fi
 
