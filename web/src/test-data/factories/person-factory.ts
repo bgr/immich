@@ -7,6 +7,7 @@ export const personFactory = Sync.makeFactory<PersonResponseDto>({
   id: Sync.each(() => faker.string.uuid()),
   isHidden: Sync.each(() => faker.datatype.boolean()),
   name: Sync.each(() => faker.person.fullName()),
+  ownerId: Sync.each(() => faker.string.uuid()),
   thumbnailPath: Sync.each(() => faker.system.filePath()),
   updatedAt: Sync.each(() => faker.date.recent().toISOString()),
 });

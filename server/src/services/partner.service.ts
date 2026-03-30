@@ -3,7 +3,7 @@ import { Partner } from 'src/database';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { PartnerCreateDto, PartnerResponseDto, PartnerSearchDto, PartnerUpdateDto } from 'src/dtos/partner.dto';
 import { mapUser } from 'src/dtos/user.dto';
-import { Permission } from 'src/enum';
+import { PartnerAccess, Permission } from 'src/enum';
 import { PartnerDirection, PartnerIds } from 'src/repositories/partner.repository';
 import { BaseService } from 'src/services/base.service';
 
@@ -43,7 +43,15 @@ export class PartnerService extends BaseService {
     await this.requireAccess({ auth, permission: Permission.PartnerUpdate, ids: [sharedById] });
     const partnerId: PartnerIds = { sharedById, sharedWithId: auth.user.id };
 
-    const entity = await this.partnerRepository.update(partnerId, { inTimeline: dto.inTimeline });
+    const updateValues: { inTimeline?: boolean; accessLevel?: string } = {};
+    if (dto.inTimeline !== undefined) {
+      updateValues.inTimeline = dto.inTimeline;
+    }
+    if (dto.accessLevel !== undefined) {
+      updateValues.accessLevel = dto.accessLevel;
+    }
+
+    const entity = await this.partnerRepository.update(partnerId, updateValues);
     return this.mapPartner(entity, PartnerDirection.SharedWith);
   }
 
@@ -52,6 +60,6 @@ export class PartnerService extends BaseService {
     const sharedUser = direction === PartnerDirection.SharedBy ? partner.sharedWith : partner.sharedBy;
     const user = mapUser(sharedUser);
 
-    return { ...user, inTimeline: partner.inTimeline };
+    return { ...user, inTimeline: partner.inTimeline, accessLevel: (partner.accessLevel || 'viewer') as PartnerAccess };
   }
 }

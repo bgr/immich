@@ -40,7 +40,7 @@ import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
 import { BaseService } from 'src/services/base.service';
 import { JobItem, JobOf } from 'src/types';
-import { getDimensions } from 'src/utils/asset.util';
+import { getDimensions, getMyPartnerIds } from 'src/utils/asset.util';
 import { ImmichFileResponse } from 'src/utils/file';
 import { mimeTypes } from 'src/utils/mime-types';
 import { isFacialRecognitionEnabled } from 'src/utils/misc';
@@ -49,12 +49,24 @@ import { Point, transformPoints } from 'src/utils/transform';
 @Injectable()
 export class PersonService extends BaseService {
   async getAll(auth: AuthDto, dto: PersonSearchDto): Promise<PeopleResponseDto> {
-    const { withHidden = false, closestAssetId, closestPersonId, page, size } = dto;
+    const { withHidden = false, closestAssetId, closestPersonId, page, size, ownerId } = dto;
     let closestFaceAssetId = closestAssetId;
     const pagination = {
       take: size,
       skip: (page - 1) * size,
     };
+
+    // If ownerId is specified and different from the current user, verify partner access
+    const targetUserId = ownerId && ownerId !== auth.user.id ? ownerId : auth.user.id;
+    if (targetUserId !== auth.user.id) {
+      const partnerIds = await getMyPartnerIds({
+        userId: auth.user.id,
+        repository: this.partnerRepository,
+      });
+      if (!partnerIds.includes(targetUserId)) {
+        throw new BadRequestException('Not found or no person.read access');
+      }
+    }
 
     if (closestPersonId) {
       const person = await this.personRepository.getById(closestPersonId);
@@ -64,12 +76,12 @@ export class PersonService extends BaseService {
       closestFaceAssetId = person.faceAssetId;
     }
     const { machineLearning } = await this.getConfig({ withCache: false });
-    const { items, hasNextPage } = await this.personRepository.getAllForUser(pagination, auth.user.id, {
+    const { items, hasNextPage } = await this.personRepository.getAllForUser(pagination, targetUserId, {
       minimumFaceCount: machineLearning.facialRecognition.minFaces,
       withHidden,
       closestFaceAssetId,
     });
-    const { total, hidden } = await this.personRepository.getNumberOfPeople(auth.user.id);
+    const { total, hidden } = await this.personRepository.getNumberOfPeople(targetUserId);
 
     return {
       people: items.map((person) => mapPerson(person)),
@@ -130,8 +142,13 @@ export class PersonService extends BaseService {
     const faces = await this.personRepository.getFaces(dto.id);
     const asset = await this.assetRepository.getForFaces(dto.id);
     const assetDimensions = getDimensions(asset);
+    const partnerIds = await getMyPartnerIds({
+      userId: auth.user.id,
+      repository: this.partnerRepository,
+    });
+    const allowedOwnerIds = new Set(partnerIds);
 
-    return faces.map((face) => mapFaces(face, auth, asset.edits, assetDimensions));
+    return faces.map((face) => mapFaces(face, auth, asset.edits, assetDimensions, allowedOwnerIds));
   }
 
   async createNewFeaturePhoto(changeFeaturePhoto: string[]) {

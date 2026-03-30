@@ -146,7 +146,9 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
     }
 
     case Permission.AssetUpdate: {
-      return await access.asset.checkOwnerAccess(auth.user.id, ids, auth.session?.hasElevatedPermission);
+      const isOwner = await access.asset.checkOwnerAccess(auth.user.id, ids, auth.session?.hasElevatedPermission);
+      const isEditor = await access.asset.checkPartnerEditorAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isEditor);
     }
 
     case Permission.AssetDelete: {
@@ -273,7 +275,9 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
     }
 
     case Permission.MemoryRead: {
-      return access.memory.checkOwnerAccess(auth.user.id, ids);
+      const isOwner = await access.memory.checkOwnerAccess(auth.user.id, ids);
+      const isPartner = await access.memory.checkPartnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isPartner);
     }
 
     case Permission.MemoryUpdate: {
@@ -288,7 +292,12 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
       return access.person.checkFaceOwnerAccess(auth.user.id, ids);
     }
 
-    case Permission.PersonRead:
+    case Permission.PersonRead: {
+      const isOwner = await access.person.checkOwnerAccess(auth.user.id, ids);
+      const isPartner = await access.person.checkPartnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isPartner);
+    }
+
     case Permission.PersonUpdate:
     case Permission.PersonDelete:
     case Permission.PersonMerge: {

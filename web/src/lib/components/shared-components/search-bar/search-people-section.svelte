@@ -4,7 +4,7 @@
   import SearchBar from '$lib/elements/SearchBar.svelte';
   import { getPeopleThumbnailUrl } from '$lib/utils';
   import { handleError } from '$lib/utils/handle-error';
-  import { getAllPeople, type PersonResponseDto } from '@immich/sdk';
+  import { getAllPeople, getPartners, PartnerDirection, type PersonResponseDto } from '@immich/sdk';
   import { Button, LoadingSpinner, Text } from '@immich/ui';
   import { mdiArrowRight, mdiClose } from '@mdi/js';
   import { t } from 'svelte-i18n';
@@ -29,10 +29,41 @@
     ];
   }
 
+  async function getAllPartnerPeople(partnerId: string): Promise<PersonResponseDto[]> {
+    const people: PersonResponseDto[] = [];
+    let page = 1;
+    let hasNext = true;
+    while (hasNext) {
+      const res = await getAllPeople({ ownerId: partnerId, withHidden: false, page });
+      people.push(...res.people);
+      hasNext = res.hasNextPage ?? false;
+      page++;
+    }
+    return people;
+  }
+
   async function getPeople() {
     try {
-      const res = await getAllPeople({ withHidden: false });
-      return orderBySelectedPeopleFirst(res.people);
+      const [res, partners] = await Promise.all([
+        getAllPeople({ withHidden: false }),
+        getPartners({ direction: PartnerDirection.SharedWith }),
+      ]);
+      const partnerPeopleArrays = await Promise.all(
+        partners
+          .filter((partner) => partner.inTimeline)
+          .map((partner) => getAllPartnerPeople(partner.id)),
+      );
+      const allPeople = [...res.people];
+      const seenIds = new Set(allPeople.map((p) => p.id));
+      for (const partnerPeople of partnerPeopleArrays) {
+        for (const person of partnerPeople) {
+          if (!seenIds.has(person.id)) {
+            allPeople.push(person);
+            seenIds.add(person.id);
+          }
+        }
+      }
+      return orderBySelectedPeopleFirst(allPeople);
     } catch (error) {
       handleError(error, $t('errors.failed_to_get_people'));
     }

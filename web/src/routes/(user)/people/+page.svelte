@@ -23,7 +23,9 @@
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { quintOut } from 'svelte/easing';
+  import { fromStore } from 'svelte/store';
   import { fly } from 'svelte/transition';
+  import { user } from '$lib/stores/user.store';
   import type { PageData } from './$types';
 
   interface Props {
@@ -31,6 +33,9 @@
   }
 
   let { data }: Props = $props();
+
+  const currentUser = fromStore(user);
+  const isOwnPerson = (person: PersonResponseDto) => person.ownerId === currentUser.current?.id;
 
   let selectHidden = $state(false);
   let searchName = $state('');
@@ -348,21 +353,28 @@
         >
           <PeopleCard
             {person}
+            canEdit={isOwnPerson(person)}
             onMergePeople={() => handleMergePeople(person)}
             onHidePerson={() => handleHidePerson(person)}
             onToggleFavorite={() => handleToggleFavorite(person)}
           />
 
-          <input
-            type="text"
-            class=" bg-white dark:bg-immich-dark-gray border-gray-100 placeholder-gray-400 text-center dark:border-gray-900 w-full rounded-2xl mt-2 py-2 text-sm text-primary"
-            value={person.name}
-            placeholder={$t('add_a_name')}
-            use:shortcut={{ shortcut: { key: 'Enter' }, onShortcut: (e) => e.currentTarget.blur() }}
-            onfocusin={() => onNameChangeInputFocus(person)}
-            onfocusout={() => onNameChangeSubmit(newName, person)}
-            oninput={(event) => onNameChangeInputUpdate(event)}
-          />
+          {#if isOwnPerson(person)}
+            <input
+              type="text"
+              class=" bg-white dark:bg-immich-dark-gray border-gray-100 placeholder-gray-400 text-center dark:border-gray-900 w-full rounded-2xl mt-2 py-2 text-sm text-primary"
+              value={person.name}
+              placeholder={$t('add_a_name')}
+              use:shortcut={{ shortcut: { key: 'Enter' }, onShortcut: (e) => e.currentTarget.blur() }}
+              onfocusin={() => onNameChangeInputFocus(person)}
+              onfocusout={() => onNameChangeSubmit(newName, person)}
+              oninput={(event) => onNameChangeInputUpdate(event)}
+            />
+          {:else}
+            <p class="text-center w-full rounded-2xl mt-2 py-2 text-sm text-primary truncate">
+              {person.name || $t('no_name')}
+            </p>
+          {/if}
         </div>
       {/snippet}
     </PeopleInfiniteScroll>

@@ -79,6 +79,8 @@ export class PersonSearchDto {
   closestPersonId?: string;
   @ValidateUUID({ optional: true, description: 'Closest asset ID for similarity search' })
   closestAssetId?: string;
+  @ValidateUUID({ optional: true, description: 'Owner ID to retrieve people for (for partner access)' })
+  ownerId?: string;
 
   @ApiPropertyOptional({ description: 'Page number for pagination', default: 1 })
   @IsInt()
@@ -97,6 +99,8 @@ export class PersonSearchDto {
 export class PersonResponseDto {
   @ApiProperty({ description: 'Person ID' })
   id!: string;
+  @ApiProperty({ description: 'Owner ID' })
+  ownerId!: string;
   @ApiProperty({ description: 'Person name' })
   name!: string;
   @ApiProperty({ format: 'date', description: 'Person date of birth' })
@@ -229,6 +233,7 @@ export class PeopleResponseDto {
 export function mapPerson(person: MaybeDehydrated<Person>): PersonResponseDto {
   return {
     id: person.id,
+    ownerId: person.ownerId,
     name: person.name,
     birthDate: asBirthDateString(person.birthDate),
     thumbnailPath: person.thumbnailPath,
@@ -267,9 +272,11 @@ export function mapFaces(
   auth: AuthDto,
   edits?: AssetEditActionItem[],
   assetDimensions?: ImageDimensions,
+  allowedOwnerIds?: Set<string>,
 ): AssetFaceResponseDto {
+  const canAccess = face.person?.ownerId === auth.user.id || allowedOwnerIds?.has(face.person?.ownerId ?? '');
   return {
     ...mapFacesWithoutPerson(face, edits, assetDimensions),
-    person: face.person?.ownerId === auth.user.id ? mapPerson(face.person) : null,
+    person: canAccess && face.person ? mapPerson(face.person) : null,
   };
 }

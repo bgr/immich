@@ -1,4 +1,4 @@
-import { AuthApiKey, AuthSharedLink, AuthUser, Exif, Library, UserAdmin } from 'src/database';
+import { AuthApiKey, AuthSharedLink, AuthUser, Exif, Library, Partner, UserAdmin } from 'src/database';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { QueueStatisticsDto } from 'src/dtos/queue.dto';
 import { AssetFileType, Permission, UserStatus } from 'src/enum';
@@ -98,6 +98,25 @@ const authUserFactory = (authUser: Partial<AuthUser> = {}) => {
   } = authUser;
 
   return { id, isAdmin, name, email, quotaUsageInBytes, quotaSizeInBytes };
+};
+
+const partnerFactory = (partner: Partial<Partner> = {}) => {
+  const sharedBy = userAdminFactory((partner.sharedBy || {}) as Partial<UserAdmin>);
+  const sharedWith = userAdminFactory((partner.sharedWith || {}) as Partial<UserAdmin>);
+
+  return {
+    sharedById: sharedBy.id,
+    sharedBy,
+    sharedWithId: sharedWith.id,
+    sharedWith,
+    createId: newUuidV7(),
+    createdAt: newDate(),
+    updatedAt: newDate(),
+    updateId: newUuidV7(),
+    inTimeline: true,
+    accessLevel: 'viewer',
+    ...partner,
+  } as Partner;
 };
 
 const queueStatisticsFactory = (dto?: Partial<QueueStatisticsDto>) => ({
@@ -236,7 +255,9 @@ export const factory = {
   assetOcr: assetOcrFactory,
   auth: authFactory,
   library: libraryFactory,
+  partner: partnerFactory,
   queueStatistics: queueStatisticsFactory,
+  user: userAdminFactory,
   versionHistory: versionHistoryFactory,
   jobAssets: {
     sidecarWrite: assetSidecarWriteFactory,

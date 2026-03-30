@@ -29,7 +29,7 @@ export class MemoryRepository implements IBulkAsset {
       .execute();
   }
 
-  searchBuilder(ownerId: string, dto: MemorySearchDto) {
+  searchBuilder(ownerIds: string[], dto: MemorySearchDto) {
     return this.db
       .selectFrom('memory')
       .$if(dto.isSaved !== undefined, (qb) => qb.where('isSaved', '=', dto.isSaved!))
@@ -40,25 +40,25 @@ export class MemoryRepository implements IBulkAsset {
           .where((where) => where.or([where('hideAt', 'is', null), where('hideAt', '>=', dto.for!)])),
       )
       .where('deletedAt', dto.isTrashed ? 'is not' : 'is', null)
-      .where('ownerId', '=', ownerId);
+      .where('ownerId', 'in', ownerIds);
   }
 
   @GenerateSql(
-    { params: [DummyValue.UUID, {}] },
-    { name: 'date filter', params: [DummyValue.UUID, { for: DummyValue.DATE }] },
+    { params: [[DummyValue.UUID], {}] },
+    { name: 'date filter', params: [[DummyValue.UUID], { for: DummyValue.DATE }] },
   )
-  statistics(ownerId: string, dto: MemorySearchDto) {
-    return this.searchBuilder(ownerId, dto)
+  statistics(ownerIds: string[], dto: MemorySearchDto) {
+    return this.searchBuilder(ownerIds, dto)
       .select((qb) => qb.fn.countAll<number>().as('total'))
       .executeTakeFirstOrThrow();
   }
 
   @GenerateSql(
-    { params: [DummyValue.UUID, {}] },
-    { name: 'date filter', params: [DummyValue.UUID, { for: DummyValue.DATE }] },
+    { params: [[DummyValue.UUID], {}] },
+    { name: 'date filter', params: [[DummyValue.UUID], { for: DummyValue.DATE }] },
   )
-  search(ownerId: string, dto: MemorySearchDto) {
-    return this.searchBuilder(ownerId, dto)
+  search(ownerIds: string[], dto: MemorySearchDto) {
+    return this.searchBuilder(ownerIds, dto)
       .select((eb) =>
         jsonArrayFrom(
           eb

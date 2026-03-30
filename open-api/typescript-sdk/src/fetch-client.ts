@@ -533,6 +533,8 @@ export type PersonWithFacesResponseDto = {
     isHidden: boolean;
     /** Person name */
     name: string;
+    /** Owner ID */
+    ownerId: string;
     /** Thumbnail path */
     thumbnailPath: string;
     /** Last update date */
@@ -1177,6 +1179,8 @@ export type PersonResponseDto = {
     isHidden: boolean;
     /** Person name */
     name: string;
+    /** Owner ID */
+    ownerId: string;
     /** Thumbnail path */
     thumbnailPath: string;
     /** Last update date */
@@ -1464,6 +1468,8 @@ export type OAuthCallbackDto = {
     url: string;
 };
 export type PartnerResponseDto = {
+    /** Partner access level */
+    accessLevel: PartnerAccess;
     /** Avatar color */
     avatarColor: UserAvatarColor;
     /** User email */
@@ -1484,8 +1490,10 @@ export type PartnerCreateDto = {
     sharedWithId: string;
 };
 export type PartnerUpdateDto = {
+    /** Partner access level */
+    accessLevel?: PartnerAccess;
     /** Show partner assets in timeline */
-    inTimeline: boolean;
+    inTimeline?: boolean;
 };
 export type PeopleResponseDto = {
     /** Whether there are more pages */
@@ -5158,9 +5166,10 @@ export function deletePeople({ bulkIdsDto }: {
 /**
  * Get all people
  */
-export function getAllPeople({ closestAssetId, closestPersonId, page, size, withHidden }: {
+export function getAllPeople({ closestAssetId, closestPersonId, ownerId, page, size, withHidden }: {
     closestAssetId?: string;
     closestPersonId?: string;
+    ownerId?: string;
     page?: number;
     size?: number;
     withHidden?: boolean;
@@ -5171,6 +5180,7 @@ export function getAllPeople({ closestAssetId, closestPersonId, page, size, with
     }>(`/people${QS.query(QS.explode({
         closestAssetId,
         closestPersonId,
+        ownerId,
         page,
         size,
         withHidden
@@ -7139,6 +7149,10 @@ export enum MemoryType {
 export enum PartnerDirection {
     SharedBy = "shared-by",
     SharedWith = "shared-with"
+}
+export enum PartnerAccess {
+    Viewer = "viewer",
+    Editor = "editor"
 }
 export enum PluginContextType {
     Asset = "asset",

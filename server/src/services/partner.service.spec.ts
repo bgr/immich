@@ -112,7 +112,7 @@ describe(PartnerService.name, () => {
       await expect(sut.update(auth, user2.id, { inTimeline: false })).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('should update partner', async () => {
+    it('should update partner inTimeline', async () => {
       const user1 = UserFactory.create();
       const user2 = UserFactory.create();
       const partner = PartnerFactory.from().sharedBy(user1).sharedWith(user2).build();
@@ -125,6 +125,38 @@ describe(PartnerService.name, () => {
       expect(mocks.partner.update).toHaveBeenCalledWith(
         { sharedById: user2.id, sharedWithId: user1.id },
         { inTimeline: true },
+      );
+    });
+
+    it('should update partner accessLevel', async () => {
+      const user1 = UserFactory.create();
+      const user2 = UserFactory.create();
+      const partner = PartnerFactory.from().sharedBy(user1).sharedWith(user2).build();
+      const auth = AuthFactory.create({ id: user1.id });
+
+      mocks.access.partner.checkUpdateAccess.mockResolvedValue(new Set([user2.id]));
+      mocks.partner.update.mockResolvedValue(getForPartner(partner));
+
+      await expect(sut.update(auth, user2.id, { accessLevel: 'editor' as any })).resolves.toBeDefined();
+      expect(mocks.partner.update).toHaveBeenCalledWith(
+        { sharedById: user2.id, sharedWithId: user1.id },
+        { accessLevel: 'editor' },
+      );
+    });
+
+    it('should update both inTimeline and accessLevel', async () => {
+      const user1 = UserFactory.create();
+      const user2 = UserFactory.create();
+      const partner = PartnerFactory.from().sharedBy(user1).sharedWith(user2).build();
+      const auth = AuthFactory.create({ id: user1.id });
+
+      mocks.access.partner.checkUpdateAccess.mockResolvedValue(new Set([user2.id]));
+      mocks.partner.update.mockResolvedValue(getForPartner(partner));
+
+      await expect(sut.update(auth, user2.id, { inTimeline: true, accessLevel: 'editor' as any })).resolves.toBeDefined();
+      expect(mocks.partner.update).toHaveBeenCalledWith(
+        { sharedById: user2.id, sharedWithId: user1.id },
+        { inTimeline: true, accessLevel: 'editor' },
       );
     });
   });

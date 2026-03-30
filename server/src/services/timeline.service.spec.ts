@@ -174,24 +174,21 @@ describe(TimelineService.name, () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw an error if withParners is true and isFavorite is either true or false', async () => {
+    it('should allow withPartners and isFavorite filter', async () => {
+      const json = `[{ id: ['asset-id'] }]`;
+      mocks.asset.getTimeBucket.mockResolvedValue({ assets: json });
+      mocks.partner.getAll.mockResolvedValue([]);
+      mocks.access.timeline.checkPartnerAccess.mockResolvedValue(new Set([authStub.admin.user.id]));
+
       await expect(
         sut.getTimeBucket(authStub.admin, {
           timeBucket: 'bucket',
           isFavorite: true,
           withPartners: true,
+          visibility: AssetVisibility.Timeline,
           userId: authStub.admin.user.id,
         }),
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(
-        sut.getTimeBucket(authStub.admin, {
-          timeBucket: 'bucket',
-          isFavorite: false,
-          withPartners: true,
-          userId: authStub.admin.user.id,
-        }),
-      ).rejects.toThrow(BadRequestException);
+      ).resolves.toEqual(json);
     });
 
     it('should throw an error if withParners is true and isTrash is true', async () => {

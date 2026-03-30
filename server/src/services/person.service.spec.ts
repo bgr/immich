@@ -13,7 +13,7 @@ import { UserFactory } from 'test/factories/user.factory';
 import { authStub } from 'test/fixtures/auth.stub';
 import { systemConfigStub } from 'test/fixtures/system-config.stub';
 import { getAsDetectedFace, getForAssetFace, getForDetectedFaces, getForFacialRecognitionJob } from 'test/mappers';
-import { newDate, newUuid } from 'test/small.factory';
+import { factory, newDate, newUuid } from 'test/small.factory';
 import { makeStream, newTestService, ServiceMocks } from 'test/utils';
 
 describe(PersonService.name, () => {
@@ -82,6 +82,39 @@ describe(PersonService.name, () => {
         withHidden: false,
       });
     });
+
+    it('should get people for a partner when ownerId is specified', async () => {
+      const partner = factory.partner({ inTimeline: true });
+      const auth = factory.auth({ user: { id: partner.sharedWithId } });
+      const person = PersonFactory.create({ name: 'Test Person' });
+
+      mocks.partner.getAll.mockResolvedValue([partner]);
+      mocks.person.getAllForUser.mockResolvedValue({
+        items: [person],
+        hasNextPage: false,
+      });
+      mocks.person.getNumberOfPeople.mockResolvedValue({ total: 1, hidden: 0 });
+
+      const result = await sut.getAll(auth, { withHidden: false, page: 1, size: 10, ownerId: partner.sharedById });
+
+      expect(result.total).toBe(1);
+      expect(mocks.person.getAllForUser).toHaveBeenCalledWith(
+        { skip: 0, take: 10 },
+        partner.sharedById,
+        expect.objectContaining({ withHidden: false }),
+      );
+    });
+
+    it('should reject getAll with ownerId when not a partner', async () => {
+      const auth = factory.auth();
+      const otherUserId = factory.uuid();
+
+      mocks.partner.getAll.mockResolvedValue([]);
+
+      await expect(sut.getAll(auth, { withHidden: false, page: 1, size: 10, ownerId: otherUserId })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
   });
 
   describe('getById', () => {
@@ -109,6 +142,20 @@ describe(PersonService.name, () => {
       await expect(sut.getById(auth, person.id)).resolves.toEqual(expect.objectContaining({ id: person.id }));
       expect(mocks.person.getById).toHaveBeenCalledWith(person.id);
       expect(mocks.access.person.checkOwnerAccess).toHaveBeenCalledWith(auth.user.id, new Set([person.id]));
+    });
+
+    it('should allow partner to get a person by id via partner access', async () => {
+      const person = PersonFactory.create({ id: 'person-1', name: 'Named Person' });
+      mocks.person.getById.mockResolvedValue(person);
+      mocks.access.person.checkOwnerAccess.mockResolvedValue(new Set());
+      mocks.access.person.checkPartnerAccess.mockResolvedValue(new Set(['person-1']));
+      await expect(sut.getById(authStub.admin, 'person-1')).resolves.toEqual(
+        expect.objectContaining({ id: 'person-1', name: 'Named Person' }),
+      );
+      expect(mocks.access.person.checkPartnerAccess).toHaveBeenCalledWith(
+        authStub.admin.user.id,
+        new Set(['person-1']),
+      );
     });
   });
 
@@ -204,11 +251,13 @@ describe(PersonService.name, () => {
 
       await expect(sut.update(auth, person.id, { birthDate: '1976-06-30' })).resolves.toEqual({
         id: person.id,
+        ownerId: person.ownerId,
         name: person.name,
         birthDate: '1976-06-30',
         thumbnailPath: person.thumbnailPath,
         isHidden: false,
         isFavorite: false,
+        color: undefined,
         updatedAt: expect.any(String),
       });
       expect(mocks.person.update).toHaveBeenCalledWith({ id: person.id, birthDate: '1976-06-30' });
@@ -355,6 +404,7 @@ describe(PersonService.name, () => {
       mocks.access.asset.checkOwnerAccess.mockResolvedValue(new Set([asset.id]));
       mocks.person.getFaces.mockResolvedValue([getForAssetFace(face)]);
       mocks.asset.getForFaces.mockResolvedValue({ edits: [], ...asset.exifInfo });
+      mocks.partner.getAll.mockResolvedValue([]);
       await expect(sut.getFacesById(auth, { id: face.assetId })).resolves.toStrictEqual([
         mapFaces(getForAssetFace(face), auth),
       ]);
@@ -400,8 +450,10 @@ describe(PersonService.name, () => {
         isHidden: person.isHidden,
         isFavorite: person.isFavorite,
         id: person.id,
+        ownerId: person.ownerId,
         name: person.name,
         thumbnailPath: person.thumbnailPath,
+        color: undefined,
         updatedAt: expect.any(String),
       });
 
